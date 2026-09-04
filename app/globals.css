@@ -1,0 +1,127 @@
+/* Tokens harpix. Nao inventar cor, fonte, sombra ou gradiente fora daqui. */
+:root {
+  --acento: #ef5727;
+  --acento-muted: #fef4f1;
+  --preto: #0a0a0a;
+  --cinza-escuro: #212123;
+  --canvas: #f4f4f6;
+  --branco: #ffffff;
+  --azul: #2071d0;
+  --verde: #00a781;
+  --erro: #ff3d41;
+
+  --txt: #0a0a0a;
+  --txt-2: #45454a;
+  --txt-muted: #76767e;
+
+  --borda: #e5e5e5;
+  --borda-forte: #cccccc;
+
+  --sombra-sm: 0 1px 2px -1px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  --r-md: 8px;
+  --r-xl: 14px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--canvas);
+  color: var(--txt);
+  font-family: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .num {
+  font-family: "Baloo 2", "Geist", system-ui, sans-serif;
+  letter-spacing: 0;
+  margin: 0;
+}
+
+.topo {
+  background: var(--preto);
+  color: var(--branco);
+  padding: 20px 32px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.topo h1 { font-size: 24px; font-weight: 700; }
+.topo .sub { color: var(--txt-muted); font-size: 14px; }
+
+.selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--txt-muted);
+}
+.ponto {
+  width: 8px; height: 8px; border-radius: 9999px; background: var(--verde);
+}
+.ponto.parado { background: var(--erro); }
+
+main { padding: 24px 32px 48px; max-width: 1440px; margin: 0 auto; }
+
+section { margin-bottom: 32px; }
+section > h2 {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--txt-2);
+  margin-bottom: 12px;
+}
+
+.grade { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+.card {
+  background: var(--branco);
+  border: 1px solid var(--borda);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sombra-sm);
+  padding: 20px 24px;
+}
+.card .rotulo { font-size: 13px; color: var(--txt-muted); margin-bottom: 6px; }
+.card .num { font-size: 52px; line-height: 1; font-weight: 700; }
+.card .num.menor { font-size: 36px; }
+.card .nota { font-size: 13px; color: var(--txt-2); margin-top: 8px; }
+.card.destaque .num { color: var(--acento); }
+.card.alerta { border-color: var(--acento); background: var(--acento-muted); }
+
+.barra {
+  display: flex; height: 10px; border-radius: 9999px; overflow: hidden;
+  background: var(--borda); margin-top: 14px;
+}
+.barra span { display: block; height: 100%; }
+
+.legenda { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; color: var(--txt-2); }
+.legenda i { width: 8px; height: 8px; border-radius: 9999px; display: inline-block; margin-right: 6px; }
+
+.aviso {
+  background: #fee2e2;
+  border: 1px solid var(--erro);
+  border-radius: var(--r-md);
+  color: #7a1113;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+.aviso strong { display: block; font-size: 16px; margin-bottom: 4px; }
+
+.rodape { color: var(--txt-muted); font-size: 13px; line-height: 1.6; border-top: 1px solid var(--borda); padding-top: 16px; }
+
+.esqueleto { color: var(--txt-muted); font-size: 15px; padding: 40px 0; }
+
+.demo {
+  background: var(--acento-muted);
+  border: 1px solid var(--acento);
+  border-radius: var(--r-md);
+  color: #8a2c11;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+.demo strong { display: block; font-size: 16px; margin-bottom: 4px; }
