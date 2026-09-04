@@ -55,7 +55,7 @@ Estão comentadas em `lib/consultas.ts` porque custaram caro para descobrir:
    precisa de `labels IS EMPTY OR` do lado, senão devolve zero em silêncio.
 2. **A estimativa mora na sub-tarefa, não na história.** Somar tempo em história
    devolve zero sem erro. Por isso `subtarefasWR` filtra por `issuetype =
-   "Sub-tarefa"`.
+"Sub-tarefa"`.
 
 E uma regra de tela: **falha de leitura nunca vira zero**. Se o Jira não responde,
 o painel mantém o último número bom e mostra um aviso vermelho por cima. Zero

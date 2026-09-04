@@ -3,7 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Cockpit Upstream · harpix",
-  description: "Produção do agente de história e esforço do escopo da sala de guerra, ao vivo do Jira.",
+  description:
+    "Produção do agente de história e esforço do escopo da sala de guerra, ao vivo do Jira.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

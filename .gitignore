@@ -6,3 +6,7 @@ out
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# scripts de diagnostico, rodam local e leem .env.local
+amostra.mjs
+artefato.mjs

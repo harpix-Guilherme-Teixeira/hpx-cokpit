@@ -38,6 +38,7 @@ export const JQL = {
   agenteAndamento: `${AGENTE_WR} AND statusCategory = "In Progress"`,
   agenteNaoIniciadas: `${AGENTE_WR} AND statusCategory = "To Do"`,
   agenteBloqueadas: `${AGENTE_WR} AND status = "Bloqueado"`,
+  agenteRefinadas: `${AGENTE_WR} AND Refinado = "Sim"`,
 
   // Entrega do escopo, separando origem.
   wrConcluidas: `${HISTORIA_WR} AND statusCategory = Done`,
@@ -51,6 +52,12 @@ export const JQL = {
   // Refinamento.
   refinadas: `${HISTORIA_WR} AND Refinado = "Sim"`,
   semRefino: `${HISTORIA_WR} AND (Refinado IS EMPTY OR Refinado = "Não")`,
+
+  // Dimensionamento por T-shirt. Hoje da ZERO no escopo, e o zero e REAL:
+  // conferido com controle, o PTF inteiro tem 165 preenchidas, entao o campo
+  // resolve na JQL. Ninguem dimensionou o escopo do WR, o agente Dimensionador
+  // VTEX foi publicado e nunca rodou.
+  tshirtPreenchido: `${HISTORIA_WR} AND "Tamanho T-Shirt" IS NOT EMPTY`,
 
   // Esforço, sempre em sub-tarefa, no mesmo escopo.
   subtarefasWR: `project = PTF AND issuetype = "Sub-tarefa" AND ${ESCOPO_WR}`,

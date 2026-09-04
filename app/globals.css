@@ -23,18 +23,29 @@
   --r-xl: 14px;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   background: var(--canvas);
   color: var(--txt);
-  font-family: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family:
+    "Geist",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3, .num {
+h1,
+h2,
+h3,
+.num {
   font-family: "Baloo 2", "Geist", system-ui, sans-serif;
   letter-spacing: 0;
   margin: 0;
@@ -50,8 +61,14 @@ h1, h2, h3, .num {
   gap: 24px;
   flex-wrap: wrap;
 }
-.topo h1 { font-size: 24px; font-weight: 700; }
-.topo .sub { color: var(--txt-muted); font-size: 14px; }
+.topo h1 {
+  font-size: 24px;
+  font-weight: 700;
+}
+.topo .sub {
+  color: var(--txt-muted);
+  font-size: 14px;
+}
 
 .selo {
   display: inline-flex;
@@ -61,13 +78,24 @@ h1, h2, h3, .num {
   color: var(--txt-muted);
 }
 .ponto {
-  width: 8px; height: 8px; border-radius: 9999px; background: var(--verde);
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--verde);
 }
-.ponto.parado { background: var(--erro); }
+.ponto.parado {
+  background: var(--erro);
+}
 
-main { padding: 24px 32px 48px; max-width: 1440px; margin: 0 auto; }
+main {
+  padding: 24px 32px 48px;
+  max-width: 1440px;
+  margin: 0 auto;
+}
 
-section { margin-bottom: 32px; }
+section {
+  margin-bottom: 32px;
+}
 section > h2 {
   font-size: 16px;
   font-weight: 500;
@@ -75,7 +103,11 @@ section > h2 {
   margin-bottom: 12px;
 }
 
-.grade { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.grade {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
 
 .card {
   background: var(--branco);
@@ -84,21 +116,60 @@ section > h2 {
   box-shadow: var(--sombra-sm);
   padding: 20px 24px;
 }
-.card .rotulo { font-size: 13px; color: var(--txt-muted); margin-bottom: 6px; }
-.card .num { font-size: 52px; line-height: 1; font-weight: 700; }
-.card .num.menor { font-size: 36px; }
-.card .nota { font-size: 13px; color: var(--txt-2); margin-top: 8px; }
-.card.destaque .num { color: var(--acento); }
-.card.alerta { border-color: var(--acento); background: var(--acento-muted); }
+.card .rotulo {
+  font-size: 13px;
+  color: var(--txt-muted);
+  margin-bottom: 6px;
+}
+.card .num {
+  font-size: 52px;
+  line-height: 1;
+  font-weight: 700;
+}
+.card .num.menor {
+  font-size: 36px;
+}
+.card .nota {
+  font-size: 13px;
+  color: var(--txt-2);
+  margin-top: 8px;
+}
+.card.destaque .num {
+  color: var(--acento);
+}
+.card.alerta {
+  border-color: var(--acento);
+  background: var(--acento-muted);
+}
 
 .barra {
-  display: flex; height: 10px; border-radius: 9999px; overflow: hidden;
-  background: var(--borda); margin-top: 14px;
+  display: flex;
+  height: 10px;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: var(--borda);
+  margin-top: 14px;
 }
-.barra span { display: block; height: 100%; }
+.barra span {
+  display: block;
+  height: 100%;
+}
 
-.legenda { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; color: var(--txt-2); }
-.legenda i { width: 8px; height: 8px; border-radius: 9999px; display: inline-block; margin-right: 6px; }
+.legenda {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--txt-2);
+}
+.legenda i {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  display: inline-block;
+  margin-right: 6px;
+}
 
 .aviso {
   background: #fee2e2;
@@ -109,11 +180,25 @@ section > h2 {
   margin-bottom: 24px;
   font-size: 14px;
 }
-.aviso strong { display: block; font-size: 16px; margin-bottom: 4px; }
+.aviso strong {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
 
-.rodape { color: var(--txt-muted); font-size: 13px; line-height: 1.6; border-top: 1px solid var(--borda); padding-top: 16px; }
+.rodape {
+  color: var(--txt-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  border-top: 1px solid var(--borda);
+  padding-top: 16px;
+}
 
-.esqueleto { color: var(--txt-muted); font-size: 15px; padding: 40px 0; }
+.esqueleto {
+  color: var(--txt-muted);
+  font-size: 15px;
+  padding: 40px 0;
+}
 
 .demo {
   background: var(--acento-muted);
@@ -124,7 +209,11 @@ section > h2 {
   margin-bottom: 24px;
   font-size: 14px;
 }
-.demo strong { display: block; font-size: 16px; margin-bottom: 4px; }
+.demo strong {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
 
 .escopo {
   font-size: 13px;
@@ -152,4 +241,39 @@ section > h2 {
   border-top: 1px solid var(--borda);
   padding-top: 10px;
 }
-.card .nota { font-size: 12px; color: var(--txt-muted); }
+.card .nota {
+  font-size: 12px;
+  color: var(--txt-muted);
+}
+
+.cabecaDireita {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.janela {
+  font-family: "Baloo 2", system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--branco);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.janelaNota {
+  font-family: "Geist", sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--txt-muted);
+}
+
+.grade.seis {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+.grade.seis .card {
+  padding: 16px 18px;
+}
+.grade.seis .num {
+  font-size: 40px;
+}

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { contar, somarTempo, credenciaisAusentes, quemSou } from "@/lib/jira";
+import { contar, somarTempo, credenciaisAusentes, quemSou, periodo } from "@/lib/jira";
 import { JQL } from "@/lib/consultas";
 import { DADOS_DEMO, MODO_DEMO_PERMITIDO } from "@/lib/demo";
 
@@ -29,6 +29,9 @@ async function medir() {
     bloqReal,
     refinadas,
     semRefino,
+    agenteRefinadas,
+    tshirtPreenchido,
+    janela,
     wrConcluidas,
     wrConcluidasAgente,
     esforco,
@@ -45,6 +48,9 @@ async function medir() {
     contar(JQL.bloqReal),
     contar(JQL.refinadas),
     contar(JQL.semRefino),
+    contar(JQL.agenteRefinadas),
+    contar(JQL.tshirtPreenchido),
+    periodo(JQL.escopoTotal),
     contar(JQL.wrConcluidas),
     contar(JQL.wrConcluidasAgente),
     somarTempo(JQL.subtarefasWR),
@@ -54,10 +60,21 @@ async function medir() {
   // Aderencia: quanto o realizado ficou acima ou abaixo do estimado, no que
   // JA FECHOU. Comparar no backlog inteiro nao diz nada, porque o que nao
   // comecou tem estimativa e zero apontamento.
-  const aderencia =
-    esforcoConcluido.estimadoH > 0
-      ? esforcoConcluido.gastoH / esforcoConcluido.estimadoH
-      : null;
+  // SO com os itens PAREADOS, que tem estimativa e apontamento. Usar os totais
+  // aqui deu 1,72x e era artefato: 199 das 397 sub-tarefas fechadas apontaram
+  // sem nunca ter tido estimativa, entao entravam no numerador e nao no
+  // denominador. Pareado da 0,91x, e o time entrega ABAIXO do que estima.
+  const par = esforcoConcluido.pareado;
+  const aderencia = par.estimadoH > 0 ? par.gastoH / par.estimadoH : null;
+
+  // O que sobrou de estimativa no que ainda nao fechou.
+  const restante = esforco.estimadoH - esforcoConcluido.estimadoH;
+
+  // Vazao MEDIA desde o dia zero do escopo. Nao e vazao da semana, e a media
+  // do periodo inteiro: honesta, mas suaviza pico e vale.
+  const inicio = janela.inicio ? new Date(janela.inicio).getTime() : null;
+  const semanas = inicio ? (Date.now() - inicio) / (7 * 24 * 3600 * 1000) : 0;
+  const vazao = semanas > 0 ? esforco.gastoH / semanas : 0;
 
   return {
     atualizadoEm: new Date().toISOString(),
@@ -72,7 +89,18 @@ async function medir() {
       bloqueadas: agenteBloqueadas,
     },
     bloqueio: { total: bloqTotal, rascunho: bloqRascunho, real: bloqReal },
-    refinamento: { refinadas, semRefino },
+    periodo: janela,
+    refinamento: { refinadas, semRefino, doAgente: agenteRefinadas },
+    dimensionamento: { comTshirt: tshirtPreenchido, semTshirt: escopoTotal - tshirtPreenchido },
+    previsibilidade: {
+      // O que falta em horas, pela estimativa que o time deu.
+      restanteEstimadoH: restante,
+      // O mesmo, corrigido pelo quanto o time historicamente estoura.
+      restanteAjustadoH: aderencia ? restante * aderencia : null,
+      vazaoSemanalH: vazao,
+      semanasDecorridas: semanas,
+      semanasRestantes: vazao > 0 && aderencia ? (restante * aderencia) / vazao : null,
+    },
     entrega: { concluidas: wrConcluidas, doAgente: wrConcluidasAgente },
     esforco: {
       estimadoH: esforco.estimadoH,
@@ -80,6 +108,10 @@ async function medir() {
       subtarefas: esforco.itens,
       concluidoEstimadoH: esforcoConcluido.estimadoH,
       concluidoGastoH: esforcoConcluido.gastoH,
+      pareadoEstimadoH: par.estimadoH,
+      pareadoGastoH: par.gastoH,
+      pareadoItens: par.itens,
+      semEstimativa: esforcoConcluido.itens - par.itens,
       aderencia,
     },
   };

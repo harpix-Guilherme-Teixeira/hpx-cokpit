@@ -114,7 +114,17 @@ export async function contar(jql: string): Promise<number> {
   }
 }
 
-export type SomaTempo = { estimadoH: number; gastoH: number; itens: number };
+export type SomaTempo = {
+  estimadoH: number;
+  gastoH: number;
+  itens: number;
+  /** Só os itens que têm estimativa E apontamento. É a ÚNICA base honesta para
+   *  comparar previsto contra realizado: somar o gasto de todo mundo contra o
+   *  estimado de quem estimou infla a razão, porque quem apontou sem estimar
+   *  entra no numerador e não no denominador. Medido no escopo: a razão
+   *  agregada dava 1,72x e a pareada dá 0,91x. */
+  pareado: { estimadoH: number; gastoH: number; itens: number };
+};
 
 // Soma estimativa original e tempo apontado percorrendo TODAS as paginas.
 // So faz sentido em SUB-TAREFA: na historia esses campos vem nulos, porque
@@ -124,6 +134,9 @@ export async function somarTempo(jql: string): Promise<SomaTempo> {
   let estimado = 0;
   let gasto = 0;
   let itens = 0;
+  let parEstimado = 0;
+  let parGasto = 0;
+  let parItens = 0;
   do {
     const r = await jira("/rest/api/3/search/jql", {
       jql,
@@ -132,11 +145,44 @@ export async function somarTempo(jql: string): Promise<SomaTempo> {
       nextPageToken: token,
     });
     for (const item of r?.issues ?? []) {
-      estimado += item?.fields?.timeoriginalestimate ?? 0;
-      gasto += item?.fields?.timespent ?? 0;
+      const e = item?.fields?.timeoriginalestimate ?? 0;
+      const g = item?.fields?.timespent ?? 0;
+      estimado += e;
+      gasto += g;
       itens += 1;
+      if (e > 0 && g > 0) {
+        parEstimado += e;
+        parGasto += g;
+        parItens += 1;
+      }
     }
     token = r?.nextPageToken;
   } while (token);
-  return { estimadoH: estimado / 3600, gastoH: gasto / 3600, itens };
+  return {
+    estimadoH: estimado / 3600,
+    gastoH: gasto / 3600,
+    itens,
+    pareado: { estimadoH: parEstimado / 3600, gastoH: parGasto / 3600, itens: parItens },
+  };
+}
+
+export type Periodo = { inicio: string | null; ultimaMexida: string | null };
+
+// Desde quando os dados existem, e quando o escopo foi mexido pela ultima vez.
+// Sai do proprio Jira, ordenando por data e pegando o primeiro: nada de data
+// escrita a mao, que envelhece calada.
+export async function periodo(jql: string): Promise<Periodo> {
+  const um = async (ordem: string, campo: "created" | "updated") => {
+    const r = await jira("/rest/api/3/search/jql", {
+      jql: `${jql} ORDER BY ${ordem}`,
+      maxResults: 1,
+      fields: [campo],
+    });
+    return r?.issues?.[0]?.fields?.[campo] ?? null;
+  };
+  const [inicio, ultimaMexida] = await Promise.all([
+    um("created ASC", "created"),
+    um("updated DESC", "updated"),
+  ]);
+  return { inicio, ultimaMexida };
 }
