@@ -36,6 +36,13 @@ type Dados = {
     estimadoH: number;
     gastoH: number;
     subtarefas: number;
+    regua: {
+      faixas: { nome: string; de: number; ate: number; n: number; mediaH: number }[];
+      historiasFechadas: number;
+      mediaH: number;
+      medianaH: number;
+    };
+    projecao: { historiasAbertas: number; porMediaH: number; porMedianaH: number };
     pareadoItens: number;
     semEstimativa: number;
     aderencia: number | null;
@@ -293,6 +300,76 @@ export default function Pagina() {
                       : "Caminho para estimar história que ainda não virou sub-tarefa."
                   }
                   variante={dados.dimensionamento.comTshirt === 0 ? "alerta" : undefined}
+                />
+              </div>
+            </section>
+
+            <section>
+              <h2>Régua de tamanho e projeção por classe</h2>
+              <p className="escopo">
+                Custo real das{" "}
+                <strong>
+                  {dados.esforco.regua.historiasFechadas} histórias que fecharam por completo
+                </strong>
+                , com todas as sub-tarefas concluídas. Os limites de faixa são fixos, PP até 2h, P
+                até 6h, M até 12h e G acima disso. O custo de cada faixa é{" "}
+                <strong>medido, não arbitrado</strong>, e se recalcula a cada leitura.
+              </p>
+              <div className="grade seis">
+                {dados.esforco.regua.faixas.map((f) => (
+                  <Card
+                    key={f.nome}
+                    rotulo={`${f.nome} · ${f.ate > 1e6 ? "acima de 12h" : `até ${f.ate}h`}`}
+                    valor={f.n > 0 ? h(f.mediaH) : "sem dado"}
+                    define={`Custo médio real das histórias fechadas que caíram nesta faixa.`}
+                    nota={`${f.n} ${f.n === 1 ? "história" : "histórias"} na amostra${
+                      f.n > 0 && f.n < 5 ? ". Amostra pequena, este número vai se mover." : "."
+                    }`}
+                    variante={f.n > 0 && f.n < 5 ? "alerta" : undefined}
+                  />
+                ))}
+                <Card
+                  rotulo="Custo de uma história"
+                  valor={h(dados.esforco.regua.mediaH)}
+                  define="Média de todas as histórias fechadas, sem separar por faixa."
+                  nota={`Mediana ${h(
+                    dados.esforco.regua.medianaH,
+                  )}. A média é maior que a mediana porque poucas histórias carregam muito esforço.`}
+                  variante="destaque"
+                />
+              </div>
+
+              <p className="escopo" style={{ marginTop: 24 }}>
+                Projeção por <strong>classe de referência</strong>: se as{" "}
+                {dados.esforco.projecao.historiasAbertas} histórias abertas custarem o mesmo que as
+                que já fecharam, o esforço restante é este. Não depende de ninguém ter estimado
+                nada, e por isso <strong>cobre o escopo inteiro</strong> em vez dos 47% que a
+                estimativa cobre.
+              </p>
+              <div className="grade">
+                <Card
+                  rotulo="Falta, pela média"
+                  valor={h(dados.esforco.projecao.porMediaH)}
+                  define={`${dados.esforco.projecao.historiasAbertas} histórias abertas vezes ${h(
+                    dados.esforco.regua.mediaH,
+                  )}, o custo médio de uma história fechada.`}
+                  nota="Cenário mais pesado, porque a média carrega o peso das poucas histórias caras."
+                  variante="destaque"
+                />
+                <Card
+                  rotulo="Falta, pela mediana"
+                  valor={h(dados.esforco.projecao.porMedianaH)}
+                  define={`As mesmas ${dados.esforco.projecao.historiasAbertas} histórias vezes ${h(
+                    dados.esforco.regua.medianaH,
+                  )}, o custo da história típica.`}
+                  nota="Cenário mais leve, ignora que algumas histórias vão custar muito mais."
+                />
+                <Card
+                  rotulo="Falta, pela estimativa"
+                  valor={h(p.restanteEstimadoH)}
+                  define={`Soma da estimativa nas ${p.abertasComEstimativa} sub-tarefas abertas que alguém estimou.`}
+                  nota="Muito abaixo das duas projeções ao lado, porque cobre menos da metade do trabalho. Não use este número sozinho."
+                  variante="alerta"
                 />
               </div>
             </section>

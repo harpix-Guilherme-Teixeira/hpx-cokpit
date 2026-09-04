@@ -31,6 +31,14 @@ const NAO_E_AGENTE = '(labels IS EMPTY OR labels != "rascunho-agente")';
 /** `Refinado` só responde pelo id. Pedir pelo nome devolve vazio em silêncio. */
 export const CAMPO_REFINADO = "customfield_11016";
 
+/** Limites da régua de T-shirt, em horas, definidos pelo Gui em 04/09/2026.
+ *  PP até 2h · P 2 a 6h · M 6 a 12h · G acima de 12h.
+ *  O CUSTO de cada faixa NÃO está fixado aqui de propósito: ele é medido ao
+ *  vivo nas histórias que já fecharam por completo, senão envelhece calado.
+ *  Medição de 04/09: PP 0,6h · P 3,5h · M 7,8h · G 37,7h. O G é aberto e
+ *  guarda de 13,6h a 115,9h, então é o candidato natural a virar dois tamanhos. */
+export const LIMITES_TSHIRT = { pp: 2, p: 6, m: 12 };
+
 export const JQL = {
   // O universo: toda história do escopo, escrita por quem quer que seja.
   escopoTotal: HISTORIA_WR,

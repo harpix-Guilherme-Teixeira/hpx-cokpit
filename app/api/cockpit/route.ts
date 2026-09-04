@@ -1,13 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  contar,
-  somarTempo,
-  credenciaisAusentes,
-  quemSou,
-  periodo,
-  refinoVsEstimativa,
-} from "@/lib/jira";
-import { JQL, CAMPO_REFINADO } from "@/lib/consultas";
+import { contar, credenciaisAusentes, quemSou, periodo, panorama } from "@/lib/jira";
+import { JQL, CAMPO_REFINADO, LIMITES_TSHIRT } from "@/lib/consultas";
 import { DADOS_DEMO, MODO_DEMO_PERMITIDO } from "@/lib/demo";
 
 export const dynamic = "force-dynamic";
@@ -41,11 +34,7 @@ async function medir() {
     janela,
     wrConcluidas,
     wrConcluidasAgente,
-    esforco,
-    esforcoConcluido,
-    abertas,
-    abertasComEstimativa,
-    refinoEst,
+    visao,
   ] = await Promise.all([
     contar(JQL.escopoTotal),
     contar(JQL.agenteTotal),
@@ -63,12 +52,14 @@ async function medir() {
     periodo(JQL.escopoTotal),
     contar(JQL.wrConcluidas),
     contar(JQL.wrConcluidasAgente),
-    somarTempo(JQL.subtarefasWR),
-    somarTempo(JQL.subtarefasWRConcluidas),
-    contar(JQL.subtarefasAbertas),
-    contar(JQL.subtarefasAbertasComEstimativa),
-    refinoVsEstimativa(JQL.refinadas, JQL.subtarefasWR, CAMPO_REFINADO),
+    panorama(JQL.subtarefasWR, JQL.escopoTotal, JQL.refinadas, CAMPO_REFINADO, LIMITES_TSHIRT),
   ]);
+
+  const esforco = { ...visao.tempo, itens: visao.subtarefas.total };
+  const par = visao.pareado;
+  const abertas = visao.subtarefas.abertas;
+  const abertasComEstimativa = visao.subtarefas.abertasComEstimativa;
+  const restante = visao.restanteEstimadoH;
 
   // Aderencia: quanto o realizado ficou acima ou abaixo do estimado, no que
   // JA FECHOU. Comparar no backlog inteiro nao diz nada, porque o que nao
@@ -77,11 +68,7 @@ async function medir() {
   // aqui deu 1,72x e era artefato: 199 das 397 sub-tarefas fechadas apontaram
   // sem nunca ter tido estimativa, entao entravam no numerador e nao no
   // denominador. Pareado da 0,91x, e o time entrega ABAIXO do que estima.
-  const par = esforcoConcluido.pareado;
   const aderencia = par.estimadoH > 0 ? par.gastoH / par.estimadoH : null;
-
-  // O que sobrou de estimativa no que ainda nao fechou.
-  const restante = esforco.estimadoH - esforcoConcluido.estimadoH;
 
   // Vazao MEDIA desde o dia zero do escopo. Nao e vazao da semana, e a media
   // do periodo inteiro: honesta, mas suaviza pico e vale.
@@ -107,8 +94,8 @@ async function medir() {
       refinadas,
       semRefino,
       doAgente: agenteRefinadas,
-      refinadasSemEstimativa: refinoEst.semEstimativa,
-      refinadasComEstimativa: refinoEst.comEstimativa,
+      refinadasSemEstimativa: visao.refino.semEstimativa,
+      refinadasComEstimativa: visao.refino.comEstimativa,
     },
     dimensionamento: { comTshirt: tshirtPreenchido, semTshirt: escopoTotal - tshirtPreenchido },
     previsibilidade: {
@@ -131,12 +118,12 @@ async function medir() {
       estimadoH: esforco.estimadoH,
       gastoH: esforco.gastoH,
       subtarefas: esforco.itens,
-      concluidoEstimadoH: esforcoConcluido.estimadoH,
-      concluidoGastoH: esforcoConcluido.gastoH,
+      regua: visao.regua,
+      projecao: visao.projecao,
       pareadoEstimadoH: par.estimadoH,
       pareadoGastoH: par.gastoH,
       pareadoItens: par.itens,
-      semEstimativa: esforcoConcluido.itens - par.itens,
+
       aderencia,
     },
   };

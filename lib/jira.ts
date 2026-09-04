@@ -239,3 +239,145 @@ export async function refinoVsEstimativa(
     semEstimativa: historias.length - comEstimativa,
   };
 }
+
+export type Faixa = { nome: string; de: number; ate: number; n: number; mediaH: number };
+export type Panorama = {
+  subtarefas: { total: number; abertas: number; abertasComEstimativa: number };
+  tempo: { estimadoH: number; gastoH: number };
+  pareado: { estimadoH: number; gastoH: number; itens: number };
+  restanteEstimadoH: number;
+  refino: { refinadas: number; comEstimativa: number; semEstimativa: number };
+  regua: { faixas: Faixa[]; historiasFechadas: number; mediaH: number; medianaH: number };
+  projecao: { historiasAbertas: number; porMediaH: number; porMedianaH: number };
+};
+
+// UMA varredura das sub-tarefas e UMA das historias, e tudo sai daqui.
+// Antes eram tres paginacoes separadas de 600+ itens, o que na Vercel estoura o
+// tempo da funcao. Alem de rapido, garante que todo numero da tela olhou
+// exatamente a mesma foto do Jira.
+export async function panorama(
+  jqlSubtarefas: string,
+  jqlHistorias: string,
+  jqlRefinadas: string,
+  campoRefinado: string,
+  limites: { pp: number; p: number; m: number },
+): Promise<Panorama> {
+  const paginar = async (jql: string, fields: string[]) => {
+    let token: string | undefined;
+    const itens: any[] = [];
+    do {
+      const r = await jira("/rest/api/3/search/jql", {
+        jql,
+        maxResults: 100,
+        fields,
+        nextPageToken: token,
+      });
+      itens.push(...(r?.issues ?? []));
+      token = r?.nextPageToken;
+    } while (token);
+    return itens;
+  };
+
+  const [subs, historias] = await Promise.all([
+    paginar(jqlSubtarefas, ["timeoriginalestimate", "timespent", "status", "parent"]),
+    paginar(jqlHistorias, ["status", campoRefinado]),
+  ]);
+
+  const fechado = (i: any) => i?.fields?.status?.statusCategory?.key === "done";
+
+  let estimado = 0;
+  let gasto = 0;
+  let parEst = 0;
+  let parGasto = 0;
+  let parItens = 0;
+  let abertas = 0;
+  let abertasComEst = 0;
+  let restante = 0;
+  const porPai: Record<string, { gasto: number; n: number; fechadas: number; temEst: boolean }> =
+    {};
+
+  for (const s of subs) {
+    const e = s?.fields?.timeoriginalestimate ?? 0;
+    const g = s?.fields?.timespent ?? 0;
+    estimado += e;
+    gasto += g;
+    const fim = fechado(s);
+    if (fim && e > 0 && g > 0) {
+      parEst += e;
+      parGasto += g;
+      parItens += 1;
+    }
+    if (!fim) {
+      abertas += 1;
+      if (e > 0) {
+        abertasComEst += 1;
+        restante += e;
+      }
+    }
+    const pai = s?.fields?.parent?.key;
+    if (pai) {
+      porPai[pai] ??= { gasto: 0, n: 0, fechadas: 0, temEst: false };
+      porPai[pai].gasto += g;
+      porPai[pai].n += 1;
+      if (fim) porPai[pai].fechadas += 1;
+      if (e > 0) porPai[pai].temEst = true;
+    }
+  }
+
+  // Refino contra estimativa: refinada NAO quer dizer estimada.
+  let refinadas = 0;
+  let refComEst = 0;
+  let historiasAbertas = 0;
+  const custoFechadas: number[] = [];
+  for (const hist of historias) {
+    if (!fechado(hist)) historiasAbertas += 1;
+    if (hist?.fields?.[campoRefinado]?.value === "Sim") {
+      refinadas += 1;
+      if (porPai[hist.key]?.temEst) refComEst += 1;
+    }
+    // Custo real de uma historia so vale quando TODAS as sub-tarefas dela
+    // fecharam; senao o apontamento esta pela metade e puxa a regua para baixo.
+    const p = porPai[hist.key];
+    if (p && p.n > 0 && p.fechadas === p.n && p.gasto > 0) custoFechadas.push(p.gasto / 3600);
+  }
+
+  custoFechadas.sort((a, b) => a - b);
+  const defs = [
+    { nome: "PP", de: 0, ate: limites.pp },
+    { nome: "P", de: limites.pp, ate: limites.p },
+    { nome: "M", de: limites.p, ate: limites.m },
+    { nome: "G", de: limites.m, ate: Infinity },
+  ];
+  const faixas: Faixa[] = defs.map((d) => {
+    const v = custoFechadas.filter((x) => x > d.de && x <= d.ate);
+    return {
+      nome: d.nome,
+      de: d.de,
+      ate: d.ate,
+      n: v.length,
+      mediaH: v.length ? v.reduce((s, x) => s + x, 0) / v.length : 0,
+    };
+  });
+  const mediaH = custoFechadas.length
+    ? custoFechadas.reduce((s, x) => s + x, 0) / custoFechadas.length
+    : 0;
+  const medianaH = custoFechadas.length ? custoFechadas[Math.floor(custoFechadas.length / 2)] : 0;
+
+  return {
+    subtarefas: { total: subs.length, abertas, abertasComEstimativa: abertasComEst },
+    tempo: { estimadoH: estimado / 3600, gastoH: gasto / 3600 },
+    pareado: { estimadoH: parEst / 3600, gastoH: parGasto / 3600, itens: parItens },
+    restanteEstimadoH: restante / 3600,
+    refino: { refinadas, comEstimativa: refComEst, semEstimativa: refinadas - refComEst },
+    regua: { faixas, historiasFechadas: custoFechadas.length, mediaH, medianaH },
+    // Previsao por classe de referencia: se as historias que faltam custarem o
+    // mesmo que as que ja fecharam, o esforco restante e este. NAO depende de
+    // ninguem ter estimado nada, e por isso e a unica projecao que hoje cobre o
+    // escopo inteiro em vez de 47% dele.
+    projecao: {
+      historiasAbertas,
+      porMediaH: historiasAbertas * mediaH,
+      porMedianaH: historiasAbertas * medianaH,
+    },
+  };
+}
