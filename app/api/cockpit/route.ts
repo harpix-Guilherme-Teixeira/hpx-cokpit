@@ -18,27 +18,35 @@ async function medir() {
   const identidade = await quemSou();
 
   const [
+    escopoTotal,
     agenteTotal,
     agenteConcluidas,
     agenteAndamento,
-    agenteFila,
+    agenteNaoIniciadas,
+    agenteBloqueadas,
     bloqTotal,
     bloqRascunho,
     bloqReal,
     refinadas,
     semRefino,
+    wrConcluidas,
+    wrConcluidasAgente,
     esforco,
     esforcoConcluido,
   ] = await Promise.all([
+    contar(JQL.escopoTotal),
     contar(JQL.agenteTotal),
     contar(JQL.agenteConcluidas),
     contar(JQL.agenteAndamento),
-    contar(JQL.agenteFila),
+    contar(JQL.agenteNaoIniciadas),
+    contar(JQL.agenteBloqueadas),
     contar(JQL.bloqTotal),
     contar(JQL.bloqRascunho),
     contar(JQL.bloqReal),
     contar(JQL.refinadas),
     contar(JQL.semRefino),
+    contar(JQL.wrConcluidas),
+    contar(JQL.wrConcluidasAgente),
     somarTempo(JQL.subtarefasWR),
     somarTempo(JQL.subtarefasWRConcluidas),
   ]);
@@ -54,14 +62,18 @@ async function medir() {
   return {
     atualizadoEm: new Date().toISOString(),
     identidade,
+    escopoTotal,
     agente: {
       total: agenteTotal,
       concluidas: agenteConcluidas,
       andamento: agenteAndamento,
-      fila: agenteFila,
+      // backlog = nao iniciadas menos as que estao travadas em Bloqueado
+      backlog: agenteNaoIniciadas - agenteBloqueadas,
+      bloqueadas: agenteBloqueadas,
     },
     bloqueio: { total: bloqTotal, rascunho: bloqRascunho, real: bloqReal },
     refinamento: { refinadas, semRefino },
+    entrega: { concluidas: wrConcluidas, doAgente: wrConcluidasAgente },
     esforco: {
       estimadoH: esforco.estimadoH,
       gastoH: esforco.gastoH,

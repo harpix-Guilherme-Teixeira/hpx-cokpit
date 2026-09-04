@@ -125,3 +125,31 @@ section > h2 {
   font-size: 14px;
 }
 .demo strong { display: block; font-size: 16px; margin-bottom: 4px; }
+
+.escopo {
+  font-size: 13px;
+  color: var(--txt-2);
+  line-height: 1.6;
+  margin: 0 0 14px;
+  max-width: 90ch;
+  border-left: 3px solid var(--borda-forte);
+  padding-left: 12px;
+}
+.escopo code {
+  font-family: "Geist", ui-monospace, monospace;
+  background: var(--canvas);
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+}
+
+.card .define {
+  font-size: 13px;
+  color: var(--txt-2);
+  margin-top: 10px;
+  line-height: 1.5;
+  border-top: 1px solid var(--borda);
+  padding-top: 10px;
+}
+.card .nota { font-size: 12px; color: var(--txt-muted); }

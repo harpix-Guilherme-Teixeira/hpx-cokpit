@@ -1,33 +1,58 @@
-// As JQLs do cockpit. Todas conferidas na mao em 02/09/2026.
+// As JQLs do cockpit.
 //
-// DUAS ARMADILHAS ESTAO CRAVADAS AQUI DE PROPOSITO:
+// REGRA NUMERO UM DESTE ARQUIVO: **uma população só.**
+// Todo indicador da tela olha histórias do projeto PTF que estão sob a
+// iniciativa HPX-31, o escopo da sala de guerra. Nada aqui pode consultar o PTF
+// inteiro. Misturar os dois escopos foi o que fez os números não fecharem: o
+// bloco do agente contava 256 no PTF inteiro enquanto a entrega contava 26 no
+// escopo do WR, e não havia como reconciliar porque não eram o mesmo universo.
+//
+// DUAS ARMADILHAS DE JQL ESTAO CRAVADAS AQUI DE PROPOSITO:
 // 1. `labels != "x"` NAO casa com item sem rotulo nenhum, por isso todo negativo
 //    vem acompanhado de `labels IS EMPTY OR`.
 // 2. A estimativa mora na SUB-TAREFA. Somar tempo em historia devolve zero em
 //    silencio, por isso a soma de horas usa o escopo de sub-tarefa.
+//
+// E uma armadilha de CATEGORIA: `statusCategory = "To Do"` engloba
+// `Sprint Backlog` E `Bloqueado`. Chamar isso de "fila" mente, porque a maioria
+// esta travada e nao esperando ser puxada. Por isso as duas sao medidas
+// separadas e nunca somadas num card so.
 
 export const ESCOPO_WR = 'parent IN portfolioChildIssuesOf("HPX-31")';
-export const AGENTE = 'project = PTF AND labels = "rascunho-agente"';
+
+/** A base de tudo: história do PTF dentro do escopo da sala de guerra. */
 export const HISTORIA_WR = `project = PTF AND issuetype = "História" AND ${ESCOPO_WR}`;
 
+/** A fatia escrita pelo agente, dentro do mesmo escopo. */
+export const AGENTE_WR = `${HISTORIA_WR} AND labels = "rascunho-agente"`;
+
+const NAO_E_AGENTE = '(labels IS EMPTY OR labels != "rascunho-agente")';
+
 export const JQL = {
-  // Producao do agente de historia
-  agenteTotal: AGENTE,
-  agenteConcluidas: `${AGENTE} AND statusCategory = Done`,
-  agenteAndamento: `${AGENTE} AND statusCategory = "In Progress"`,
-  agenteFila: `${AGENTE} AND statusCategory = "To Do"`,
+  // O universo: toda história do escopo, escrita por quem quer que seja.
+  escopoTotal: HISTORIA_WR,
 
-  // Bloqueio, separando rascunho de bloqueio de verdade
-  bloqTotal: 'project = PTF AND status = "Bloqueado" AND issuetype = "História"',
-  bloqRascunho: 'project = PTF AND status = "Bloqueado" AND issuetype = "História" AND labels = "rascunho-agente"',
-  bloqReal:
-    'project = PTF AND status = "Bloqueado" AND issuetype = "História" AND (labels IS EMPTY OR labels != "rascunho-agente")',
+  // Produção do agente, dentro do escopo.
+  agenteTotal: AGENTE_WR,
+  agenteConcluidas: `${AGENTE_WR} AND statusCategory = Done`,
+  agenteAndamento: `${AGENTE_WR} AND statusCategory = "In Progress"`,
+  agenteNaoIniciadas: `${AGENTE_WR} AND statusCategory = "To Do"`,
+  agenteBloqueadas: `${AGENTE_WR} AND status = "Bloqueado"`,
 
-  // Refinamento no escopo da sala de guerra
+  // Entrega do escopo, separando origem.
+  wrConcluidas: `${HISTORIA_WR} AND statusCategory = Done`,
+  wrConcluidasAgente: `${HISTORIA_WR} AND statusCategory = Done AND labels = "rascunho-agente"`,
+
+  // Status Bloqueado, separando por origem da história, não por causa.
+  bloqTotal: `${HISTORIA_WR} AND status = "Bloqueado"`,
+  bloqRascunho: `${HISTORIA_WR} AND status = "Bloqueado" AND labels = "rascunho-agente"`,
+  bloqReal: `${HISTORIA_WR} AND status = "Bloqueado" AND ${NAO_E_AGENTE}`,
+
+  // Refinamento.
   refinadas: `${HISTORIA_WR} AND Refinado = "Sim"`,
   semRefino: `${HISTORIA_WR} AND (Refinado IS EMPTY OR Refinado = "Não")`,
 
-  // Esforco, sempre em sub-tarefa
+  // Esforço, sempre em sub-tarefa, no mesmo escopo.
   subtarefasWR: `project = PTF AND issuetype = "Sub-tarefa" AND ${ESCOPO_WR}`,
   subtarefasWRConcluidas: `project = PTF AND issuetype = "Sub-tarefa" AND ${ESCOPO_WR} AND statusCategory = Done`,
 } as const;
