@@ -251,126 +251,36 @@ export default function Pagina() {
             <section>
               <h2>Previsibilidade</h2>
               <p className="escopo">
-                <strong>Ainda não dá para prever data.</strong> Só existem{" "}
-                {p.semanasDecorridas.toFixed(0)} semanas de histórico e menos da metade do trabalho
-                que falta tem estimativa. Os números abaixo dizem o tamanho do que se sabe, e o
-                tamanho do que não se sabe.
+                <strong>Hoje não dá para prever quando acaba.</strong> Este bloco existe para dizer
+                o porquê, e o que precisa mudar para conseguirmos. As duas caixas da direita são as
+                que travam: enquanto elas não caírem, somar horas responde sobre menos da metade do
+                trabalho.
               </p>
               <div className="grade">
                 <Card
-                  rotulo="Cobertura da estimativa"
-                  valor={p.cobertura !== null ? `${Math.round(p.cobertura * 100)}%` : "sem dado"}
-                  define={`Das ${p.abertas} sub-tarefas ainda abertas, ${p.abertasComEstimativa} têm estimativa.`}
-                  nota="É este número que trava a previsão de prazo. Enquanto ele não subir, projetar data é adivinhar sobre a metade que falta."
-                  variante={p.cobertura !== null && p.cobertura < 0.8 ? "alerta" : undefined}
-                />
-                <Card
-                  rotulo="Falta pela estimativa"
+                  rotulo="Falta, no mínimo"
                   valor={h(p.restanteEstimadoH)}
-                  define={`Estimativa das ${p.abertasComEstimativa} sub-tarefas abertas que foram estimadas.`}
-                  nota={`As outras ${
-                    p.abertas - p.abertasComEstimativa
-                  } não entram, então o esforço real que falta é maior.`}
-                />
-                <Card
-                  rotulo="Falta pela estatística"
-                  valor={p.restanteAjustadoH !== null ? h(p.restanteAjustadoH) : "sem dado"}
-                  define={`O mesmo valor corrigido pela aderência de ${
-                    a !== null ? a.toFixed(2) : "?"
-                  }x, medida nas ${
-                    dados.esforco.pareadoItens
-                  } sub-tarefas fechadas que tinham estimativa e apontamento.`}
-                  nota="Abaixo de 1x significa que o time historicamente entrega em menos tempo do que estima."
+                  define={`Soma da estimativa nas ${p.abertasComEstimativa} sub-tarefas abertas que alguém estimou.`}
+                  nota="É piso, não é total. O esforço real que falta é maior, porque a maior parte do que está aberto nunca foi estimado."
                   variante="destaque"
                 />
                 <Card
-                  rotulo="Vazão semanal"
-                  valor={h(p.vazaoSemanalH)}
-                  define={`Média de horas apontadas por semana desde ${dia(dados.periodo.inicio)}.`}
-                  nota={`Apontado total dividido por ${p.semanasDecorridas.toFixed(
-                    1,
-                  )} semanas corridas. É média do período inteiro, não é a vazão da semana passada nem tendência.`}
+                  rotulo="Sub-tarefas abertas sem estimativa"
+                  valor={p.abertas - p.abertasComEstimativa}
+                  define={`De ${p.abertas} sub-tarefas ainda abertas, só ${p.abertasComEstimativa} têm estimativa.`}
+                  nota="Cada uma destas é trabalho que existe e não entra em nenhuma conta de prazo."
+                  variante="alerta"
                 />
                 <Card
-                  rotulo="Dimensionadas por T-shirt"
-                  valor={`${dados.dimensionamento.comTshirt} de ${dados.escopoTotal}`}
-                  define="Histórias do escopo com o campo Tamanho T-Shirt preenchido."
+                  rotulo="Histórias sem dimensionamento"
+                  valor={dados.dimensionamento.semTshirt}
+                  define="Histórias do escopo com o campo Tamanho T-Shirt vazio."
                   nota={
                     dados.dimensionamento.comTshirt === 0
-                      ? "Zero conferido com controle: o PTF inteiro tem 165 preenchidas, então o campo funciona. É o caminho para estimar história que ainda não virou sub-tarefa."
+                      ? "Nenhuma foi dimensionada. O zero é real, conferido com controle: o PTF inteiro tem 165 preenchidas, então o campo funciona. É o caminho para estimar história que ainda não virou sub-tarefa."
                       : "Caminho para estimar história que ainda não virou sub-tarefa."
                   }
                   variante={dados.dimensionamento.comTshirt === 0 ? "alerta" : undefined}
-                />
-              </div>
-            </section>
-
-            <section>
-              <h2>Régua de tamanho e projeção por classe</h2>
-              <p className="escopo">
-                Custo real das{" "}
-                <strong>
-                  {dados.esforco.regua.historiasFechadas} histórias que fecharam por completo
-                </strong>
-                , com todas as sub-tarefas concluídas. Os limites de faixa são fixos, PP até 2h, P
-                até 6h, M até 12h e G acima disso. O custo de cada faixa é{" "}
-                <strong>medido, não arbitrado</strong>, e se recalcula a cada leitura.
-              </p>
-              <div className="grade seis">
-                {dados.esforco.regua.faixas.map((f) => (
-                  <Card
-                    key={f.nome}
-                    rotulo={`${f.nome} · ${f.ate > 1e6 ? "acima de 12h" : `até ${f.ate}h`}`}
-                    valor={f.n > 0 ? h(f.mediaH) : "sem dado"}
-                    define={`Custo médio real das histórias fechadas que caíram nesta faixa.`}
-                    nota={`${f.n} ${f.n === 1 ? "história" : "histórias"} na amostra${
-                      f.n > 0 && f.n < 5 ? ". Amostra pequena, este número vai se mover." : "."
-                    }`}
-                    variante={f.n > 0 && f.n < 5 ? "alerta" : undefined}
-                  />
-                ))}
-                <Card
-                  rotulo="Custo de uma história"
-                  valor={h(dados.esforco.regua.mediaH)}
-                  define="Média de todas as histórias fechadas, sem separar por faixa."
-                  nota={`Mediana ${h(
-                    dados.esforco.regua.medianaH,
-                  )}. A média é maior que a mediana porque poucas histórias carregam muito esforço.`}
-                  variante="destaque"
-                />
-              </div>
-
-              <p className="escopo" style={{ marginTop: 24 }}>
-                Projeção por <strong>classe de referência</strong>: se as{" "}
-                {dados.esforco.projecao.historiasAbertas} histórias abertas custarem o mesmo que as
-                que já fecharam, o esforço restante é este. Não depende de ninguém ter estimado
-                nada, e por isso <strong>cobre o escopo inteiro</strong> em vez dos 47% que a
-                estimativa cobre.
-              </p>
-              <div className="grade">
-                <Card
-                  rotulo="Falta, pela média"
-                  valor={h(dados.esforco.projecao.porMediaH)}
-                  define={`${dados.esforco.projecao.historiasAbertas} histórias abertas vezes ${h(
-                    dados.esforco.regua.mediaH,
-                  )}, o custo médio de uma história fechada.`}
-                  nota="Cenário mais pesado, porque a média carrega o peso das poucas histórias caras."
-                  variante="destaque"
-                />
-                <Card
-                  rotulo="Falta, pela mediana"
-                  valor={h(dados.esforco.projecao.porMedianaH)}
-                  define={`As mesmas ${dados.esforco.projecao.historiasAbertas} histórias vezes ${h(
-                    dados.esforco.regua.medianaH,
-                  )}, o custo da história típica.`}
-                  nota="Cenário mais leve, ignora que algumas histórias vão custar muito mais."
-                />
-                <Card
-                  rotulo="Falta, pela estimativa"
-                  valor={h(p.restanteEstimadoH)}
-                  define={`Soma da estimativa nas ${p.abertasComEstimativa} sub-tarefas abertas que alguém estimou.`}
-                  nota="Muito abaixo das duas projeções ao lado, porque cobre menos da metade do trabalho. Não use este número sozinho."
-                  variante="alerta"
                 />
               </div>
             </section>

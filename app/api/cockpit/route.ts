@@ -118,6 +118,10 @@ async function medir() {
       estimadoH: esforco.estimadoH,
       gastoH: esforco.gastoH,
       subtarefas: esforco.itens,
+      // A regua e a projecao por classe de referencia continuam sendo
+      // CALCULADAS, porque saem da mesma varredura e nao custam nada a mais.
+      // A v1 nao mostra nenhuma das duas, por decisao do Gui em 04/09. Para
+      // religar, basta a secao no page.tsx, o dado ja chega aqui.
       regua: visao.regua,
       projecao: visao.projecao,
       pareadoEstimadoH: par.estimadoH,
