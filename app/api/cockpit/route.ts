@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
-import { contar, somarTempo, credenciaisAusentes, quemSou, periodo } from "@/lib/jira";
-import { JQL } from "@/lib/consultas";
+import {
+  contar,
+  somarTempo,
+  credenciaisAusentes,
+  quemSou,
+  periodo,
+  refinoVsEstimativa,
+} from "@/lib/jira";
+import { JQL, CAMPO_REFINADO } from "@/lib/consultas";
 import { DADOS_DEMO, MODO_DEMO_PERMITIDO } from "@/lib/demo";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +43,9 @@ async function medir() {
     wrConcluidasAgente,
     esforco,
     esforcoConcluido,
+    abertas,
+    abertasComEstimativa,
+    refinoEst,
   ] = await Promise.all([
     contar(JQL.escopoTotal),
     contar(JQL.agenteTotal),
@@ -55,6 +65,9 @@ async function medir() {
     contar(JQL.wrConcluidasAgente),
     somarTempo(JQL.subtarefasWR),
     somarTempo(JQL.subtarefasWRConcluidas),
+    contar(JQL.subtarefasAbertas),
+    contar(JQL.subtarefasAbertasComEstimativa),
+    refinoVsEstimativa(JQL.refinadas, JQL.subtarefasWR, CAMPO_REFINADO),
   ]);
 
   // Aderencia: quanto o realizado ficou acima ou abaixo do estimado, no que
@@ -90,7 +103,13 @@ async function medir() {
     },
     bloqueio: { total: bloqTotal, rascunho: bloqRascunho, real: bloqReal },
     periodo: janela,
-    refinamento: { refinadas, semRefino, doAgente: agenteRefinadas },
+    refinamento: {
+      refinadas,
+      semRefino,
+      doAgente: agenteRefinadas,
+      refinadasSemEstimativa: refinoEst.semEstimativa,
+      refinadasComEstimativa: refinoEst.comEstimativa,
+    },
     dimensionamento: { comTshirt: tshirtPreenchido, semTshirt: escopoTotal - tshirtPreenchido },
     previsibilidade: {
       // O que falta em horas, pela estimativa que o time deu.
@@ -99,7 +118,13 @@ async function medir() {
       restanteAjustadoH: aderencia ? restante * aderencia : null,
       vazaoSemanalH: vazao,
       semanasDecorridas: semanas,
-      semanasRestantes: vazao > 0 && aderencia ? (restante * aderencia) / vazao : null,
+      // Quanto do que falta tem estimativa. Sem isso, "falta X horas" e uma
+      // frase sobre metade do trabalho. NAO existe card de "semanas para
+      // acabar": dividir um restante subestimado por uma vazao media de 4
+      // semanas dava 1,1 semana num plano que vai ate novembro.
+      abertas,
+      abertasComEstimativa,
+      cobertura: abertas > 0 ? abertasComEstimativa / abertas : null,
     },
     entrega: { concluidas: wrConcluidas, doAgente: wrConcluidasAgente },
     esforco: {

@@ -186,3 +186,56 @@ export async function periodo(jql: string): Promise<Periodo> {
   ]);
   return { inicio, ultimaMexida };
 }
+
+export type RefinoVsEstimativa = {
+  refinadas: number;
+  comEstimativa: number;
+  semEstimativa: number;
+};
+
+// "Refinada" e "estimada" sao coisas diferentes e o painel precisa mostrar isso
+// com numero, nao com opiniao. Cruza as historias marcadas Refinado = Sim com
+// as sub-tarefas delas, e conta quantas nao tem NENHUMA sub-tarefa estimada.
+// O `Refinado` so responde pelo id do campo; pedir por nome devolve vazio em
+// silencio e faz parecer que ninguem refinou nada.
+export async function refinoVsEstimativa(
+  jqlRefinadas: string,
+  jqlSubtarefas: string,
+  campoRefinado: string,
+): Promise<RefinoVsEstimativa> {
+  const paginar = async (jql: string, fields: string[]) => {
+    let token: string | undefined;
+    const itens: any[] = [];
+    do {
+      const r = await jira("/rest/api/3/search/jql", {
+        jql,
+        maxResults: 100,
+        fields,
+        nextPageToken: token,
+      });
+      itens.push(...(r?.issues ?? []));
+      token = r?.nextPageToken;
+    } while (token);
+    return itens;
+  };
+
+  const [historias, subs] = await Promise.all([
+    paginar(jqlRefinadas, [campoRefinado]),
+    paginar(jqlSubtarefas, ["timeoriginalestimate", "parent"]),
+  ]);
+
+  const paiTemEstimativa = new Set<string>();
+  for (const s of subs) {
+    const pai = s?.fields?.parent?.key;
+    if (pai && (s?.fields?.timeoriginalestimate ?? 0) > 0) paiTemEstimativa.add(pai);
+  }
+
+  let comEstimativa = 0;
+  for (const hist of historias) if (paiTemEstimativa.has(hist.key)) comEstimativa += 1;
+
+  return {
+    refinadas: historias.length,
+    comEstimativa,
+    semEstimativa: historias.length - comEstimativa,
+  };
+}

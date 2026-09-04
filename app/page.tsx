@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 
 type Dados = {
   atualizadoEm: string;
-  identidade?: string;
   escopoTotal: number;
   periodo: { inicio: string | null; ultimaMexida: string | null };
   agente: {
@@ -15,7 +14,13 @@ type Dados = {
     bloqueadas: number;
   };
   bloqueio: { total: number; rascunho: number; real: number };
-  refinamento: { refinadas: number; semRefino: number; doAgente: number };
+  refinamento: {
+    refinadas: number;
+    semRefino: number;
+    doAgente: number;
+    refinadasSemEstimativa: number;
+    refinadasComEstimativa: number;
+  };
   entrega: { concluidas: number; doAgente: number };
   dimensionamento: { comTshirt: number; semTshirt: number };
   previsibilidade: {
@@ -23,16 +28,14 @@ type Dados = {
     restanteAjustadoH: number | null;
     vazaoSemanalH: number;
     semanasDecorridas: number;
-    semanasRestantes: number | null;
+    abertas: number;
+    abertasComEstimativa: number;
+    cobertura: number | null;
   };
   esforco: {
     estimadoH: number;
     gastoH: number;
     subtarefas: number;
-    concluidoEstimadoH: number;
-    concluidoGastoH: number;
-    pareadoEstimadoH: number;
-    pareadoGastoH: number;
     pareadoItens: number;
     semEstimativa: number;
     aderencia: number | null;
@@ -129,9 +132,7 @@ export default function Pagina() {
           <div className="selo">
             <span className={falha ? "ponto parado" : "ponto"} />
             {dados
-              ? `Lido às ${new Date(dados.atualizadoEm).toLocaleTimeString("pt-BR")}${
-                  dados.identidade ? ` por ${dados.identidade}` : ""
-                }`
+              ? `Lido do Jira às ${new Date(dados.atualizadoEm).toLocaleTimeString("pt-BR")}`
               : "conectando"}
           </div>
         </div>
@@ -161,22 +162,30 @@ export default function Pagina() {
               <h2>Histórias do agente</h2>
               <p className="escopo">
                 Das <strong>{dados.escopoTotal} histórias do escopo</strong> (projeto PTF sob a
-                iniciativa HPX-31), estas são as que carregam o rótulo <code>rascunho-agente</code>.
-                Acumulado desde <strong>{dia(dados.periodo.inicio)}</strong>, sem recorte de data.
+                iniciativa HPX-31), estas são as que o agente escreveu. Contagem acumulada desde{" "}
+                {dia(dados.periodo.inicio)}, não é do mês.
               </p>
               <div className="grade seis">
                 <Card
                   rotulo="Todas do agente"
                   valor={dados.agente.total}
-                  define="Total acumulado que o agente escreveu."
-                  nota={`${pct(dados.agente.total, dados.escopoTotal)}% do escopo`}
+                  define="Histórias que carregam o rótulo rascunho-agente."
+                  nota={`${pct(
+                    dados.agente.total,
+                    dados.escopoTotal,
+                  )}% do escopo. Em andamento, concluídas, bloqueadas e prontas somam este total.`}
                   variante="destaque"
                 />
                 <Card
                   rotulo="Refinadas"
                   valor={dados.refinamento.doAgente}
-                  define="Campo Refinado igual a Sim."
-                  nota={`${pct(dados.refinamento.doAgente, dados.agente.total)}% das do agente`}
+                  define="Campo Refinado marcado como Sim."
+                  nota={`${pct(
+                    dados.refinamento.doAgente,
+                    dados.agente.total,
+                  )}% das do agente. Refinada não é estimada: ${
+                    dados.refinamento.refinadasSemEstimativa
+                  } das ${dados.refinamento.refinadas} refinadas do escopo não têm nenhuma sub-tarefa estimada.`}
                 />
                 <Card
                   rotulo="Em andamento"
@@ -187,21 +196,24 @@ export default function Pagina() {
                   rotulo="Concluídas"
                   valor={dados.agente.concluidas}
                   define="Status Concluído."
-                  nota={`${dados.entrega.concluidas} no escopo inteiro, contando as ${
+                  nota={`No escopo inteiro são ${dados.entrega.concluidas}, somando as ${
                     dados.entrega.concluidas - dados.entrega.doAgente
-                  } escritas por pessoa`}
+                  } que uma pessoa escreveu.`}
                 />
                 <Card
                   rotulo="Bloqueadas"
                   valor={dados.agente.bloqueadas}
                   define="Status Bloqueado."
-                  nota={`${pct(dados.agente.bloqueadas, dados.agente.total)}% das do agente`}
+                  nota={`${pct(
+                    dados.agente.bloqueadas,
+                    dados.agente.total,
+                  )}% das do agente. O Jira registra o status, não o motivo. A quebra está no último bloco.`}
                   variante={dados.agente.bloqueadas > dados.agente.total / 2 ? "alerta" : undefined}
                 />
                 <Card
                   rotulo="Prontas"
                   valor={dados.agente.backlog}
-                  define="Sprint Backlog, prontas para alguém puxar."
+                  define="Sprint Backlog, disponíveis para alguém puxar."
                 />
               </div>
             </section>
@@ -209,21 +221,21 @@ export default function Pagina() {
             <section>
               <h2>Horas</h2>
               <p className="escopo">
-                Somadas nas <strong>sub-tarefas</strong> das histórias do escopo, porque a
-                estimativa mora um nível abaixo e somar na história devolveria zero.
+                Somadas nas <strong>sub-tarefas</strong>, porque a estimativa mora um nível abaixo
+                da história e somar na história devolveria zero.
               </p>
               <div className="grade">
                 <Card
                   rotulo="Estimativa original"
                   valor={h(dados.esforco.estimadoH)}
-                  define="Soma da estimativa original das sub-tarefas do escopo."
-                  nota={`${dados.esforco.subtarefas} sub-tarefas`}
+                  define={`Soma da estimativa nas ${dados.esforco.subtarefas} sub-tarefas do escopo. Quem nunca foi estimado entra como zero.`}
+                  nota="Por isso este número é piso, não é o esforço total previsto."
                 />
                 <Card
-                  rotulo="Horas gastas"
+                  rotulo="Horas apontadas"
                   valor={h(dados.esforco.gastoH)}
-                  define="Soma do tempo que o time apontou nessas mesmas sub-tarefas."
-                  nota={`${h(dados.esforco.gastoH - dados.esforco.estimadoH)} acima do estimado`}
+                  define="Soma do tempo que o time registrou nessas mesmas sub-tarefas."
+                  nota="Fora desta conta ficam cerca de 42h apontadas em ritos, melhorias e sub-bugs, que o painel ainda não soma."
                 />
               </div>
             </section>
@@ -231,38 +243,45 @@ export default function Pagina() {
             <section>
               <h2>Previsibilidade</h2>
               <p className="escopo">
-                Projeção a partir do que o time já entregou.{" "}
-                <strong>Ela assume que o escopo para de crescer</strong>, e ele não está parando.
-                Leia como ordem de grandeza, não como data.
+                <strong>Ainda não dá para prever data.</strong> Só existem{" "}
+                {p.semanasDecorridas.toFixed(0)} semanas de histórico e menos da metade do trabalho
+                que falta tem estimativa. Os números abaixo dizem o tamanho do que se sabe, e o
+                tamanho do que não se sabe.
               </p>
               <div className="grade">
                 <Card
+                  rotulo="Cobertura da estimativa"
+                  valor={p.cobertura !== null ? `${Math.round(p.cobertura * 100)}%` : "sem dado"}
+                  define={`Das ${p.abertas} sub-tarefas ainda abertas, ${p.abertasComEstimativa} têm estimativa.`}
+                  nota="É este número que trava a previsão de prazo. Enquanto ele não subir, projetar data é adivinhar sobre a metade que falta."
+                  variante={p.cobertura !== null && p.cobertura < 0.8 ? "alerta" : undefined}
+                />
+                <Card
                   rotulo="Falta pela estimativa"
                   valor={h(p.restanteEstimadoH)}
-                  define="Estimativa das sub-tarefas que ainda não foram concluídas."
+                  define={`Estimativa das ${p.abertasComEstimativa} sub-tarefas abertas que foram estimadas.`}
+                  nota={`As outras ${
+                    p.abertas - p.abertasComEstimativa
+                  } não entram, então o esforço real que falta é maior.`}
                 />
                 <Card
                   rotulo="Falta pela estatística"
                   valor={p.restanteAjustadoH !== null ? h(p.restanteAjustadoH) : "sem dado"}
-                  define={`O que falta, corrigido pela aderência de ${
+                  define={`O mesmo valor corrigido pela aderência de ${
                     a !== null ? a.toFixed(2) : "?"
-                  }x medida nas ${dados.esforco.pareadoItens} sub-tarefas fechadas que tinham estimativa e apontamento.`}
-                  nota={`${dados.esforco.semEstimativa} sub-tarefas fecharam sem nunca ter tido estimativa e ficam de fora dessa conta.`}
+                  }x, medida nas ${
+                    dados.esforco.pareadoItens
+                  } sub-tarefas fechadas que tinham estimativa e apontamento.`}
+                  nota="Abaixo de 1x significa que o time historicamente entrega em menos tempo do que estima."
                   variante="destaque"
                 />
                 <Card
                   rotulo="Vazão semanal"
                   valor={h(p.vazaoSemanalH)}
-                  define="Média de horas apontadas por semana desde o início do escopo."
-                  nota={`${p.semanasDecorridas.toFixed(
+                  define={`Média de horas apontadas por semana desde ${dia(dados.periodo.inicio)}.`}
+                  nota={`Apontado total dividido por ${p.semanasDecorridas.toFixed(
                     1,
-                  )} semanas corridas. É média do período, suaviza pico e vale.`}
-                />
-                <Card
-                  rotulo="Semanas para acabar"
-                  valor={p.semanasRestantes !== null ? p.semanasRestantes.toFixed(1) : "sem dado"}
-                  define="Falta pela estatística dividido pela vazão semanal."
-                  nota="Só vale se o escopo parar de crescer."
+                  )} semanas corridas. É média do período inteiro, não é a vazão da semana passada nem tendência.`}
                 />
                 <Card
                   rotulo="Dimensionadas por T-shirt"
@@ -270,8 +289,8 @@ export default function Pagina() {
                   define="Histórias do escopo com o campo Tamanho T-Shirt preenchido."
                   nota={
                     dados.dimensionamento.comTshirt === 0
-                      ? "Zero real, conferido com controle: o PTF inteiro tem 165 preenchidas. O agente Dimensionador foi publicado e nunca rodou."
-                      : "Base para estimar história que ainda não tem sub-tarefa."
+                      ? "Zero conferido com controle: o PTF inteiro tem 165 preenchidas, então o campo funciona. É o caminho para estimar história que ainda não virou sub-tarefa."
+                      : "Caminho para estimar história que ainda não virou sub-tarefa."
                   }
                   variante={dados.dimensionamento.comTshirt === 0 ? "alerta" : undefined}
                 />
@@ -281,9 +300,9 @@ export default function Pagina() {
             <section>
               <h2>Quem está no status Bloqueado</h2>
               <p className="escopo">
-                As {dados.bloqueio.total} histórias do escopo em <code>Bloqueado</code>, separadas
-                por origem. <strong>O Jira não diz o motivo do bloqueio</strong>, então isto separa
-                quem escreveu, não a causa do impedimento.
+                As {dados.bloqueio.total} histórias do escopo em <code>Bloqueado</code>. O Jira
+                registra o status, <strong>não o motivo</strong>, então a separação abaixo é por
+                quem escreveu a história, não pela causa do impedimento.
               </p>
               <div className="grade">
                 <Card
@@ -320,27 +339,27 @@ export default function Pagina() {
                   rotulo="Escritas pelo agente"
                   valor={dados.bloqueio.rascunho}
                   define="Bloqueado e com o rótulo rascunho-agente."
-                  nota="Provável fila de revisão, mas isso é leitura nossa, não dado do Jira."
+                  nota="O Jira não diz se está esperando revisão ou travada por dependência. Só sabemos que está em Bloqueado e que o agente escreveu."
                 />
                 <Card
                   rotulo="Escritas por pessoa"
                   valor={dados.bloqueio.real}
-                  define="Bloqueado e sem o rótulo."
-                  nota="Aqui é onde o impedimento de time costuma estar."
+                  define="Bloqueado e sem o rótulo do agente."
+                  nota="Estava neste mesmo número ontem, enquanto o total de bloqueadas subiu. São duas observações, não é tendência."
                   variante="destaque"
                 />
               </div>
             </section>
 
             <p className="rodape">
-              <strong>Como ler.</strong> Todo número desta tela sai da mesma população: as{" "}
-              {dados.escopoTotal} histórias do projeto PTF sob a iniciativa HPX-31, o escopo da sala
-              de guerra. Nada aqui olha o PTF inteiro, então os blocos reconciliam entre si. O
-              período vai de {dia(dados.periodo.inicio)}, quando nasceu o primeiro item do escopo,
-              até {dia(dados.periodo.ultimaMexida)}, a última mexida. A tela recarrega sozinha a
-              cada minuto e o servidor guarda a leitura por mais um minuto, então o número pode ter
-              até dois minutos de idade. O horário no topo diz com qual conta o Jira foi lido,
-              porque o painel mostra o que essa conta enxerga.
+              <strong>Como ler.</strong> Todo número desta tela sai da mesma população, as{" "}
+              {dados.escopoTotal} histórias do projeto PTF sob a iniciativa HPX-31. Nada aqui olha o
+              PTF inteiro, então os blocos reconciliam entre si. O período vai de{" "}
+              {dia(dados.periodo.inicio)}, quando nasceu o primeiro item do escopo, até{" "}
+              {dia(dados.periodo.ultimaMexida)}, a última mexida em qualquer item. A tela recarrega
+              sozinha a cada minuto e o servidor guarda a leitura por mais um minuto, então o número
+              pode ter até dois minutos de idade. Quando a leitura falha, o painel mantém o último
+              número bom e avisa em vermelho, nunca mostra zero calado.
             </p>
           </>
         )}

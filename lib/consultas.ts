@@ -28,6 +28,9 @@ export const AGENTE_WR = `${HISTORIA_WR} AND labels = "rascunho-agente"`;
 
 const NAO_E_AGENTE = '(labels IS EMPTY OR labels != "rascunho-agente")';
 
+/** `Refinado` só responde pelo id. Pedir pelo nome devolve vazio em silêncio. */
+export const CAMPO_REFINADO = "customfield_11016";
+
 export const JQL = {
   // O universo: toda história do escopo, escrita por quem quer que seja.
   escopoTotal: HISTORIA_WR,
@@ -62,4 +65,11 @@ export const JQL = {
   // Esforço, sempre em sub-tarefa, no mesmo escopo.
   subtarefasWR: `project = PTF AND issuetype = "Sub-tarefa" AND ${ESCOPO_WR}`,
   subtarefasWRConcluidas: `project = PTF AND issuetype = "Sub-tarefa" AND ${ESCOPO_WR} AND statusCategory = Done`,
+
+  // Cobertura da estimativa no que AINDA FALTA. E o numero que decide se dá
+  // para projetar alguma coisa: hoje so 47% das sub-tarefas abertas tem
+  // estimativa, entao "o que falta" em horas cobre menos da metade do trabalho.
+  // `originalEstimate > 0` e obrigatorio: `IS NOT EMPTY` casa com ZERO.
+  subtarefasAbertas: `project = PTF AND issuetype = "Sub-tarefa" AND ${ESCOPO_WR} AND statusCategory != Done`,
+  subtarefasAbertasComEstimativa: `project = PTF AND issuetype = "Sub-tarefa" AND ${ESCOPO_WR} AND statusCategory != Done AND originalEstimate > 0`,
 } as const;
