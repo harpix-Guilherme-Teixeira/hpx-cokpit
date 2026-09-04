@@ -23,6 +23,11 @@ type Dados = {
   };
   entrega: { concluidas: number; doAgente: number };
   dimensionamento: { comTshirt: number; semTshirt: number };
+  /** A API continua devolvendo isto, mas a v1 NÃO mostra previsibilidade.
+   *  Removida em 04/09 por decisão do Gui: o que estava na tela não era o que a
+   *  Alline pediu. Ela queria a previsão do VTEX de 28/08 trazida para cá, em
+   *  HORAS POR SEMANA, para cruzar com a capacidade do time. O que eu tinha
+   *  construído respondia outra pergunta. O tipo fica aqui para quando voltar. */
   previsibilidade: {
     restanteEstimadoH: number;
     restanteAjustadoH: number | null;
@@ -119,9 +124,6 @@ export default function Pagina() {
     };
   }, []);
 
-  const a = dados?.esforco.aderencia ?? null;
-  const p = dados?.previsibilidade;
-
   return (
     <>
       <header className="topo">
@@ -163,7 +165,7 @@ export default function Pagina() {
 
         {!dados && !falha && <p className="esqueleto">Lendo o Jira pela primeira vez.</p>}
 
-        {dados && p && (
+        {dados && (
           <>
             <section>
               <h2>Histórias do agente</h2>
@@ -244,43 +246,6 @@ export default function Pagina() {
                   valor={h(dados.esforco.gastoH)}
                   define="Soma do tempo que o time registrou nessas mesmas sub-tarefas."
                   nota="Fora desta conta ficam cerca de 42h apontadas em ritos, melhorias e sub-bugs, que o painel ainda não soma."
-                />
-              </div>
-            </section>
-
-            <section>
-              <h2>Previsibilidade</h2>
-              <p className="escopo">
-                <strong>Hoje não dá para prever quando acaba.</strong> Este bloco existe para dizer
-                o porquê, e o que precisa mudar para conseguirmos. As duas caixas da direita são as
-                que travam: enquanto elas não caírem, somar horas responde sobre menos da metade do
-                trabalho.
-              </p>
-              <div className="grade">
-                <Card
-                  rotulo="Falta, no mínimo"
-                  valor={h(p.restanteEstimadoH)}
-                  define={`Soma da estimativa nas ${p.abertasComEstimativa} sub-tarefas abertas que alguém estimou.`}
-                  nota="É piso, não é total. O esforço real que falta é maior, porque a maior parte do que está aberto nunca foi estimado."
-                  variante="destaque"
-                />
-                <Card
-                  rotulo="Sub-tarefas abertas sem estimativa"
-                  valor={p.abertas - p.abertasComEstimativa}
-                  define={`De ${p.abertas} sub-tarefas ainda abertas, só ${p.abertasComEstimativa} têm estimativa.`}
-                  nota="Cada uma destas é trabalho que existe e não entra em nenhuma conta de prazo."
-                  variante="alerta"
-                />
-                <Card
-                  rotulo="Histórias sem dimensionamento"
-                  valor={dados.dimensionamento.semTshirt}
-                  define="Histórias do escopo com o campo Tamanho T-Shirt vazio."
-                  nota={
-                    dados.dimensionamento.comTshirt === 0
-                      ? "Nenhuma foi dimensionada. O zero é real, conferido com controle: o PTF inteiro tem 165 preenchidas, então o campo funciona. É o caminho para estimar história que ainda não virou sub-tarefa."
-                      : "Caminho para estimar história que ainda não virou sub-tarefa."
-                  }
-                  variante={dados.dimensionamento.comTshirt === 0 ? "alerta" : undefined}
                 />
               </div>
             </section>
