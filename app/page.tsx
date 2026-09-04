@@ -180,7 +180,7 @@ export default function Pagina() {
                   nota={`${pct(
                     dados.agente.total,
                     dados.escopoTotal,
-                  )}% do escopo. Em andamento, concluídas, bloqueadas e prontas somam este total.`}
+                  )}% do escopo. Somando as ${dados.agente.concluidas} concluídas do agente, mais em andamento, bloqueadas e prontas, fecha este total.`}
                   variante="destaque"
                 />
                 <Card
@@ -200,12 +200,13 @@ export default function Pagina() {
                   define="Em Desenvolvimento, Em Testes ou Liberado para Testes."
                 />
                 <Card
-                  rotulo="Concluídas"
-                  valor={dados.agente.concluidas}
-                  define="Status Concluído."
-                  nota={`No escopo inteiro são ${dados.entrega.concluidas}, somando as ${
+                  rotulo="Concluídas no escopo"
+                  valor={dados.entrega.concluidas}
+                  define="Status Concluído, contando as histórias do escopo inteiro, escritas por quem quer que seja."
+                  nota={`${dados.entrega.doAgente} vieram do agente e ${
                     dados.entrega.concluidas - dados.entrega.doAgente
-                  } que uma pessoa escreveu.`}
+                  } de pessoa. É o único card deste bloco que não é só do agente.`}
+                  variante="destaque"
                 />
                 <Card
                   rotulo="Bloqueadas"
