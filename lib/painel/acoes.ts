@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { clienteServidor, usuarioAtual } from "@/lib/supabase/servidor";
-import type { PresetPeriodo, TipoCampo } from "./tipos";
+import type { ConfigCard, PresetPeriodo, TipoCampo } from "./tipos";
 
 export type Resultado<T> = { ok: true; dado: T } | { ok: false; erro: string };
 
@@ -163,6 +163,11 @@ export type NovoConjuntoEntrada = {
   nome: string;
   descricao?: string;
   colunas: ColunaNova[];
+  /** Painel onde este conjunto vai aparecer. Escolhido, o conjunto já nasce
+   *  com uma faixa e um card por coluna numérica, mais a tabela. Dado que
+   *  nasce invisível é dado que ninguém confere, e um mês depois ninguém sabe
+   *  se está certo. */
+  painelId?: number;
 };
 
 export async function criarConjunto(
@@ -237,8 +242,93 @@ export async function criarConjunto(
     return { ok: false, erro: `Não consegui criar as colunas: ${erroCampos.message}` };
   }
 
+  if (entrada.painelId) {
+    await montarFaixaDoConjunto(supabase, entrada.painelId, data.id, limpo, colunas);
+    revalidatePath(`/panels/${entrada.painelId}`);
+  }
+
   revalidatePath("/datasets");
   return { ok: true, dado: { id: data.id } };
+}
+
+/** Monta a faixa inicial do conjunto no painel escolhido.
+ *
+ *  Um card por coluna numérica, mais uma tabela com tudo. A definição de cada
+ *  card sai da descrição da coluna, e quando ela não existe, de uma frase que
+ *  diz de onde o número vem. Card sem definição não passaria na conferência do
+ *  editor, e criar aqui um que não passaria lá seria incoerente.
+ *
+ *  Falha aqui NÃO derruba a criação do conjunto: o dado já está salvo, e
+ *  perder a tabela inteira porque a decoração falhou seria desproporcional. */
+async function montarFaixaDoConjunto(
+  supabase: Awaited<ReturnType<typeof clienteServidor>>,
+  painelId: number,
+  conjuntoId: number,
+  nomeConjunto: string,
+  colunas: ColunaNova[],
+) {
+  const { data: ultima } = await supabase
+    .from("pnl_faixa")
+    .select("ordem")
+    .eq("painel_id", painelId)
+    .order("ordem", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const numericas = colunas.filter((c) => c.tipo === "numero");
+  const totalCards = numericas.length + 1;
+  const colunasDaFaixa = Math.min(4, Math.max(1, totalCards));
+
+  const { data: faixa, error } = await supabase
+    .from("pnl_faixa")
+    .insert({
+      painel_id: painelId,
+      titulo: nomeConjunto,
+      descricao: null,
+      colunas: colunasDaFaixa,
+      ordem: (ultima?.ordem ?? -1) + 1,
+    })
+    .select("id")
+    .single();
+
+  if (error || !faixa) return;
+
+  // Tipado na mão porque os dois formatos de card têm config diferente e o
+  // inferido do primeiro elemento não aceitaria o segundo.
+  const cards: {
+    faixa_id: number;
+    tipo: string;
+    titulo: string;
+    definicao: string;
+    config: ConfigCard;
+    largura: number;
+    ordem: number;
+  }[] = numericas.map((c, i) => ({
+    faixa_id: faixa.id,
+    tipo: "numero",
+    titulo: c.nome.trim(),
+    definicao: `Soma de ${c.nome.trim()} no conjunto ${nomeConjunto}. Dado manual.`,
+    config: {
+      conjuntoId,
+      metrica: "soma" as const,
+      campoValor: aoSlug(c.nome),
+      destaque: i === 0,
+    },
+    largura: 1,
+    ordem: i,
+  }));
+
+  cards.push({
+    faixa_id: faixa.id,
+    tipo: "tabela",
+    titulo: `${nomeConjunto}, linhas`,
+    definicao: `Todas as linhas digitadas no conjunto ${nomeConjunto}, com as colunas na ordem em que foram criadas.`,
+    config: { conjuntoId, colunas: colunas.map((c) => aoSlug(c.nome)) },
+    largura: colunasDaFaixa,
+    ordem: numericas.length,
+  });
+
+  await supabase.from("pnl_card").insert(cards);
 }
 
 export async function excluirConjunto(id: number): Promise<Resultado<null>> {

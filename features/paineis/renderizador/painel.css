@@ -1,0 +1,312 @@
+/* Estilo do painel montado. TUDO aqui lê variável `--pnl-*`, que o contêiner
+   recebe por `style` a partir do tema. Nenhuma cor literal.
+
+   É essa disciplina que faz a prévia mudar na hora no editor: trocar uma cor
+   troca o valor de uma variável, nada é recompilado e nada re-renderiza além
+   do necessário. No dia em que alguém escrever `#ef5727` aqui, aquele pedaço
+   para de responder ao tema e ninguém entende por quê. */
+
+.pnl {
+  min-height: 100%;
+  background: var(--pnl-fundo);
+  color: var(--pnl-texto);
+  font-family: var(--pnl-fonte-corpo);
+  -webkit-font-smoothing: antialiased;
+}
+
+.pnl h1,
+.pnl h2,
+.pnl .pnl-valor {
+  font-family: var(--pnl-fonte-titulo);
+  margin: 0;
+}
+
+/* ---------- cabeçalho ---------- */
+.pnl-topo {
+  background: var(--pnl-header-fundo);
+  color: var(--pnl-header-texto);
+  padding: 20px 32px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.pnl-topo.fixo {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+.pnl-marca {
+  font-weight: 700;
+  text-transform: lowercase;
+  color: var(--pnl-acento);
+  font-size: 15px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.pnl-topo h1 {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.pnl-sub {
+  opacity: 0.65;
+  font-size: 13px;
+  margin-top: 4px;
+}
+.pnl-lido {
+  font-size: 12px;
+  opacity: 0.65;
+  text-align: right;
+}
+
+/* ---------- corpo ---------- */
+.pnl-corpo {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 28px 32px 56px;
+}
+
+/* ---------- faixa ---------- */
+.pnl-faixa {
+  margin-bottom: 36px;
+}
+.pnl-faixa.fundo-superficie,
+.pnl-faixa.fundo-acento {
+  padding: 20px;
+  border-radius: var(--pnl-raio);
+}
+.pnl-faixa.fundo-superficie {
+  background: var(--pnl-superficie-alt);
+}
+.pnl-faixa.fundo-acento {
+  background: var(--pnl-acento-suave);
+}
+
+.pnl-faixa-cab {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.pnl-faixa-cab h2 {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pnl-texto-suave);
+}
+.pnl-risco {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, var(--pnl-borda-forte), transparent);
+}
+.pnl-dica {
+  font-size: 12px;
+  color: var(--pnl-texto-fraco);
+}
+.pnl-faixa-desc {
+  font-size: 13px;
+  color: var(--pnl-texto-fraco);
+  margin: -6px 0 14px;
+  max-width: 80ch;
+}
+
+.pnl-grelha {
+  display: grid;
+  gap: var(--pnl-gap);
+}
+
+/* ---------- card ---------- */
+.pnl-card {
+  background: var(--pnl-superficie);
+  border: 1px solid var(--pnl-borda);
+  border-radius: var(--pnl-raio);
+  box-shadow: var(--pnl-sombra);
+  padding: var(--pnl-pad);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+.pnl-card.destaque {
+  border-color: var(--pnl-acento);
+  background: var(--pnl-acento-suave);
+}
+.pnl-card.destaque .pnl-valor {
+  color: var(--pnl-acento);
+}
+
+.pnl-rot {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--pnl-texto-suave);
+}
+.pnl-valor {
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.pnl-def {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--pnl-texto-fraco);
+  border-top: 1px solid var(--pnl-borda);
+  padding-top: 10px;
+  margin-top: auto;
+}
+
+.pnl-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--pnl-fonte-corpo);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.pnl-delta.bom {
+  color: var(--pnl-positivo);
+  background: color-mix(in srgb, var(--pnl-positivo) 12%, transparent);
+}
+.pnl-delta.ruim {
+  color: var(--pnl-negativo);
+  background: color-mix(in srgb, var(--pnl-negativo) 12%, transparent);
+}
+.pnl-delta.neutro {
+  color: var(--pnl-texto-fraco);
+  background: color-mix(in srgb, var(--pnl-texto-fraco) 12%, transparent);
+}
+
+/* Aviso de que o card não obedece ao período. Fica visível de propósito:
+   silêncio ali faz a pessoa mexer no período e achar que o número reagiu. */
+.pnl-nota {
+  font-size: 11px;
+  color: var(--pnl-texto-fraco);
+  font-style: italic;
+}
+
+/* ---------- progresso ---------- */
+.pnl-barra-fundo {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--pnl-borda);
+  overflow: hidden;
+}
+.pnl-barra-cheia {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--pnl-acento);
+}
+
+/* ---------- tabela ---------- */
+.pnl-tabela-envolve {
+  overflow-x: auto;
+  margin: 0 -4px;
+}
+.pnl-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.pnl-tabela th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--pnl-texto-fraco);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--pnl-borda);
+  white-space: nowrap;
+}
+.pnl-tabela td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--pnl-borda);
+  color: var(--pnl-texto-suave);
+}
+.pnl-tabela tr:last-child td {
+  border-bottom: none;
+}
+.pnl-tabela .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- lista ---------- */
+.pnl-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.pnl-lista li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--pnl-texto-suave);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--pnl-borda);
+}
+.pnl-lista li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.pnl-etiqueta {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--pnl-superficie-alt);
+  border: 1px solid var(--pnl-borda);
+  white-space: nowrap;
+}
+
+/* ---------- texto ---------- */
+.pnl-texto-livre {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--pnl-texto-suave);
+  white-space: pre-wrap;
+}
+
+/* ---------- rodapé ---------- */
+.pnl-rodape {
+  max-width: 1680px;
+  margin: 0 auto;
+  padding: 20px 32px 0;
+  border-top: 1px solid var(--pnl-borda);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--pnl-texto-fraco);
+}
+
+.pnl-vazio {
+  border: 1px dashed var(--pnl-borda-forte);
+  border-radius: var(--pnl-raio);
+  padding: 40px 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--pnl-texto-fraco);
+}
+
+@media (max-width: 1100px) {
+  .pnl-topo,
+  .pnl-corpo,
+  .pnl-rodape {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}

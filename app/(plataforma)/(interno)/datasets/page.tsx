@@ -9,17 +9,17 @@ export const dynamic = "force-dynamic";
 export default async function PaginaDatasets() {
   const supabase = await clienteServidor();
 
-  const { data: conjuntos, error } = await supabase
-    .from("dad_conjunto")
-    .select("id, chave, nome, descricao, atualizado_em")
-    .order("nome");
+  const [{ data: conjuntos, error }, { data: paineis }] = await Promise.all([
+    supabase.from("dad_conjunto").select("id, chave, nome, descricao, atualizado_em").order("nome"),
+    supabase.from("pnl_painel").select("id, nome").order("ordem"),
+  ]);
 
   return (
     <Pagina>
       <TituloPagina
         titulo="Dados"
         descricao="Cada conjunto é uma tabela que você nomeia, com colunas tipadas. O tipo da coluna é o que decide quais filtros e quais métricas o construtor vai oferecer depois."
-        acao={<NovoConjunto />}
+        acao={<NovoConjunto paineis={paineis ?? []} />}
       />
 
       <Secao titulo="Conjuntos" contador={conjuntos?.length}>
@@ -29,7 +29,7 @@ export default async function PaginaDatasets() {
           <Vazio
             titulo="Nenhum conjunto ainda"
             texto="Um conjunto é uma tabela que você nomeia, com colunas tipadas. É dele que os cards puxam número."
-            acao={<NovoConjunto tom="contorno" rotulo="Criar o primeiro" />}
+            acao={<NovoConjunto tom="contorno" rotulo="Criar o primeiro" paineis={paineis ?? []} />}
           />
         ) : (
           <Cartao>

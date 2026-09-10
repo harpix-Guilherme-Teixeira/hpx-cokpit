@@ -20,14 +20,21 @@ const TIPOS: { valor: TipoCampo; rotulo: string; explica: string }[] = [
   { valor: "booleano", rotulo: "Sim ou não", explica: "Verdadeiro ou falso" },
 ];
 
-type Props = { tom?: "primario" | "contorno"; rotulo?: string };
+type Props = {
+  tom?: "primario" | "contorno";
+  rotulo?: string;
+  /** Painéis onde este conjunto pode aparecer. Vem do servidor porque o menu
+   *  precisa existir antes do primeiro clique. */
+  paineis: { id: number; nome: string }[];
+};
 
-export function NovoConjunto({ tom = "primario", rotulo = "Novo conjunto" }: Props) {
+export function NovoConjunto({ tom = "primario", rotulo = "Novo conjunto", paineis }: Props) {
   const router = useRouter();
   const [aberta, setAberta] = useState(false);
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [colunas, setColunas] = useState<ColunaNova[]>([{ nome: "", tipo: "texto" }]);
+  const [painelId, setPainelId] = useState<string>(paineis[0] ? String(paineis[0].id) : "");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, iniciar] = useTransition();
 
@@ -39,6 +46,7 @@ export function NovoConjunto({ tom = "primario", rotulo = "Novo conjunto" }: Pro
     setNome("");
     setDescricao("");
     setColunas([{ nome: "", tipo: "texto" }]);
+    setPainelId(paineis[0] ? String(paineis[0].id) : "");
     setErro(null);
   }
 
@@ -47,7 +55,12 @@ export function NovoConjunto({ tom = "primario", rotulo = "Novo conjunto" }: Pro
     setErro(null);
 
     iniciar(async () => {
-      const r = await criarConjunto({ nome, descricao, colunas });
+      const r = await criarConjunto({
+        nome,
+        descricao,
+        colunas,
+        painelId: painelId ? Number(painelId) : undefined,
+      });
       if (!r.ok) {
         setErro(r.erro);
         return;
@@ -163,6 +176,24 @@ export function NovoConjunto({ tom = "primario", rotulo = "Novo conjunto" }: Pro
               Adicionar coluna
             </Botao>
           </div>
+
+          <Selecao
+            rotulo="Aparece no painel"
+            value={painelId}
+            onChange={(e) => setPainelId(e.target.value)}
+            dica={
+              painelId
+                ? "Ao criar, já monto uma faixa nesse painel com um card por coluna numérica e uma tabela com tudo. Dado que nasce invisível é dado que ninguém confere."
+                : "Sem painel, o conjunto fica só na área de Dados e não aparece em lugar nenhum."
+            }
+          >
+            <option value="">Nenhum, só guardar os dados</option>
+            {paineis.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nome}
+              </option>
+            ))}
+          </Selecao>
 
           {erro && (
             <p className="border-error/40 bg-error/5 text-error rounded-lg border px-3 py-2 text-sm">

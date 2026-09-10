@@ -11,10 +11,14 @@ export function InterruptorPublicar({
   id,
   publicado,
   slug,
+  semLink = false,
 }: {
   id: number;
   publicado: boolean;
   slug: string;
+  /** A tela do painel já tem o link "Ver publicado" no topo. Repetir aqui
+   *  duplicaria a mesma ação a dois centímetros de distância. */
+  semLink?: boolean;
 }) {
   const router = useRouter();
   const [ligado, setLigado] = useState(publicado);
@@ -41,7 +45,7 @@ export function InterruptorPublicar({
 
   return (
     <div className="flex items-center gap-2">
-      {ligado && (
+      {ligado && !semLink && (
         <a
           href={`/p/${slug}`}
           target="_blank"
