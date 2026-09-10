@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { clienteServidor, usuarioAtual } from "@/lib/supabase/servidor";
 import type { ConfigCard, PresetPeriodo, TipoCampo } from "./tipos";
+import { MODELOS, type Modelo } from "./modelos";
+import { PRESETS, TEMA_CLARO } from "./tema";
 
 export type Resultado<T> = { ok: true; dado: T } | { ok: false; erro: string };
 
@@ -71,6 +73,9 @@ export type NovoPainelEntrada = {
   slug?: string;
   periodoPadrao?: PresetPeriodo;
   publicado?: boolean;
+  /** Chave em MODELOS, ou vazio para começar em branco. O modelo traz tema,
+   *  faixas, cards E o conjunto de dados com as colunas certas. */
+  modelo?: string;
 };
 
 export async function criarPainel(entrada: NovoPainelEntrada): Promise<Resultado<{ id: number }>> {
@@ -103,8 +108,133 @@ export async function criarPainel(entrada: NovoPainelEntrada): Promise<Resultado
 
   if (error) return { ok: false, erro: error.message };
 
+  if (entrada.modelo) {
+    const modelo = MODELOS.find((m) => m.chave === entrada.modelo);
+    if (modelo) await aplicarModelo(supabase, data.id, modelo, usuario.id);
+  }
+
   revalidatePath("/dashboard");
   return { ok: true, dado: { id: data.id } };
+}
+
+/** Monta o painel a partir de um modelo: tema, cabeçalho, o conjunto de dados
+ *  com as colunas certas, as faixas e os cards já apontando para o conjunto.
+ *
+ *  Falha aqui não derruba o painel, que já está criado. Painel vazio é
+ *  recuperável, painel que não existe porque a decoração falhou, não. */
+async function aplicarModelo(
+  supabase: Awaited<ReturnType<typeof clienteServidor>>,
+  painelId: number,
+  modelo: Modelo,
+  usuarioId: string,
+) {
+  const preset = PRESETS.find((p) => p.chave === modelo.preset)?.tema ?? TEMA_CLARO;
+
+  await supabase
+    .from("pnl_painel")
+    .update({
+      tema: preset,
+      titulo: modelo.cabecalho?.titulo ?? null,
+      subtitulo: modelo.cabecalho?.subtitulo ?? null,
+      atualizado_por: usuarioId,
+    })
+    .eq("id", painelId);
+
+  // O conjunto vem junto porque os painéis originais leem o Jira ao vivo e
+  // aqui o dado é manual. Sem ele o modelo entregaria cards sem fonte.
+  let conjuntoId: number | undefined;
+
+  if (modelo.conjunto) {
+    const chaveBase = aoSlug(modelo.conjunto.nome);
+    const { data: jaExiste } = await supabase
+      .from("dad_conjunto")
+      .select("id")
+      .eq("chave", chaveBase)
+      .maybeSingle();
+
+    if (jaExiste) {
+      // Reaproveita em vez de criar "medicoes-da-semana-2": dois conjuntos com
+      // as mesmas colunas viram duas verdades sobre o mesmo assunto.
+      conjuntoId = jaExiste.id;
+    } else {
+      const { data: novo } = await supabase
+        .from("dad_conjunto")
+        .insert({
+          nome: modelo.conjunto.nome,
+          chave: chaveBase,
+          descricao: modelo.conjunto.descricao,
+          atualizado_por: usuarioId,
+        })
+        .select("id")
+        .single();
+
+      conjuntoId = novo?.id;
+
+      if (conjuntoId) {
+        await supabase.from("dad_campo").insert(
+          modelo.conjunto.colunas.map((c, i) => ({
+            conjunto_id: conjuntoId,
+            chave: aoSlug(c.nome),
+            nome: c.nome,
+            tipo: c.tipo,
+            formato: c.tipo === "numero" ? (c.formato ?? "inteiro") : "texto",
+            casas: c.tipo === "numero" ? (c.casas ?? 0) : 0,
+            opcoes: [],
+            ordem: i,
+          })),
+        );
+      }
+    }
+  }
+
+  const campoData = modelo.conjunto?.colunas.find((c) => c.tipo === "data");
+
+  for (let i = 0; i < modelo.faixas.length; i += 1) {
+    const fm = modelo.faixas[i];
+
+    const { data: faixa } = await supabase
+      .from("pnl_faixa")
+      .insert({
+        painel_id: painelId,
+        titulo: fm.titulo,
+        descricao: fm.descricao ?? null,
+        dica: fm.dica ?? null,
+        colunas: fm.colunas,
+        fundo: fm.fundo ?? "transparente",
+        ordem: i,
+      })
+      .select("id")
+      .single();
+
+    if (!faixa) continue;
+
+    await supabase.from("pnl_card").insert(
+      fm.cards.map((cm, j) => ({
+        faixa_id: faixa.id,
+        tipo: cm.tipo ?? "numero",
+        titulo: cm.titulo,
+        definicao: cm.definicao,
+        config: {
+          ...(cm.tipo === "texto"
+            ? { texto: cm.texto }
+            : {
+                conjuntoId,
+                metrica: cm.metrica ?? "ultimo",
+                campoValor: cm.coluna ? aoSlug(cm.coluna) : undefined,
+                campoCategoria: cm.categoria ? aoSlug(cm.categoria) : undefined,
+                // Só liga o período quando o conjunto tem data. Ligar sem data
+                // deixaria o card comparando contra uma janela inexistente.
+                campoData: campoData && cm.comparar ? aoSlug(campoData.nome) : undefined,
+                comparar: !!cm.comparar && !!campoData,
+                subirEhBom: cm.subirEhBom,
+              }),
+          destaque: cm.destaque,
+        } as ConfigCard,
+        largura: cm.largura ?? 1,
+        ordem: j,
+      })),
+    );
+  }
 }
 
 export async function renomearPainel(id: number, nome: string): Promise<Resultado<null>> {

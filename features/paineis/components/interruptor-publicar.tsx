@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { IconExternalLink } from "@tabler/icons-react";
-import { toast } from "sonner";
+import { aviso } from "@/componentes/ui/toast";
 import { Botao } from "@/componentes/ui/botao";
 import { publicarPainel } from "@/lib/painel/acoes";
 
@@ -35,10 +35,10 @@ export function InterruptorPublicar({
       const r = await publicarPainel(id, alvo);
       if (!r.ok) {
         setLigado(!alvo);
-        toast.error(r.erro);
+        aviso.erro(r.erro);
         return;
       }
-      toast.success(alvo ? "Painel publicado." : "Painel voltou a rascunho.");
+      aviso.sucesso(alvo ? "Painel publicado." : "Painel voltou a rascunho.");
       router.refresh();
     });
   }

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
-import { toast } from "sonner";
+import { aviso } from "@/componentes/ui/toast";
 import { AreaTexto } from "@/componentes/ui/area-texto";
 import { Botao } from "@/componentes/ui/botao";
 import { Campo } from "@/componentes/ui/campo";
@@ -65,7 +65,7 @@ export function NovoConjunto({ tom = "primario", rotulo = "Novo conjunto", paine
         setErro(r.erro);
         return;
       }
-      toast.success("Conjunto criado.");
+      aviso.sucesso("Conjunto criado.");
       setAberta(false);
       limpar();
       router.push(`/datasets/${r.dado.id}`);

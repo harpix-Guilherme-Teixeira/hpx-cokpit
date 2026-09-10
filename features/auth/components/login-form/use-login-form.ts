@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
-import { toast } from "sonner";
+import { aviso } from "@/componentes/ui/toast";
 import { clienteNavegador } from "@/lib/supabase/navegador";
 import { esquemaLogin, type EsquemaLogin } from "./login-schema";
 
@@ -55,7 +55,7 @@ export function useLoginForm() {
         }
         // A mensagem é a mesma para e-mail que não existe e senha errada, de
         // propósito: dizer qual dos dois falhou entrega quem tem conta aqui.
-        toast.error("E-mail ou senha incorretos.");
+        aviso.erro("E-mail ou senha incorretos.");
         return;
       }
 
@@ -64,7 +64,7 @@ export function useLoginForm() {
       router.refresh();
       router.replace(params.get("de") ?? "/dashboard");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível entrar agora.");
+      aviso.erro(e instanceof Error ? e.message : "Não foi possível entrar agora.");
     } finally {
       setEnviando(false);
     }

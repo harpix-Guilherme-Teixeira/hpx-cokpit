@@ -10,7 +10,9 @@ export default function LayoutPlataforma({ children }: { children: ReactNode }) 
   return (
     <div className="plataforma">
       {children}
-      <Toaster position="top-right" richColors closeButton />
+      {/* Sem richColors nem closeButton: o cartão do toast é nosso, em
+          componentes/ui/toast.tsx, no padrão da esteira. */}
+      <Toaster position="bottom-right" />
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { IconPlus } from "@tabler/icons-react";
-import { toast } from "sonner";
+import { aviso } from "@/componentes/ui/toast";
 import { AreaTexto } from "@/componentes/ui/area-texto";
 import { Botao } from "@/componentes/ui/botao";
 import { Campo } from "@/componentes/ui/campo";
@@ -11,6 +11,7 @@ import { Gaveta } from "@/componentes/ui/gaveta";
 import { Selecao } from "@/componentes/ui/selecao";
 import { criarPainel } from "@/lib/painel/acoes";
 import type { PresetPeriodo } from "@/lib/painel/tipos";
+import { MODELOS } from "@/lib/painel/modelos";
 
 const PERIODOS: { valor: PresetPeriodo; rotulo: string }[] = [
   { valor: "7d", rotulo: "Últimos 7 dias" },
@@ -41,6 +42,7 @@ export function NovoPainel({ tom = "primario", rotulo = "Novo painel" }: Props) 
   const [slugTocado, setSlugTocado] = useState(false);
   const [periodo, setPeriodo] = useState<PresetPeriodo>("30d");
   const [publicado, setPublicado] = useState(false);
+  const [modelo, setModelo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [salvando, iniciar] = useTransition();
 
@@ -56,6 +58,7 @@ export function NovoPainel({ tom = "primario", rotulo = "Novo painel" }: Props) 
     setSlugTocado(false);
     setPeriodo("30d");
     setPublicado(false);
+    setModelo("");
     setErro(null);
   }
 
@@ -70,6 +73,7 @@ export function NovoPainel({ tom = "primario", rotulo = "Novo painel" }: Props) 
         slug: slugFinal,
         periodoPadrao: periodo,
         publicado,
+        modelo: modelo || undefined,
       });
 
       if (!r.ok) {
@@ -77,7 +81,7 @@ export function NovoPainel({ tom = "primario", rotulo = "Novo painel" }: Props) 
         return;
       }
 
-      toast.success("Painel criado.");
+      aviso.sucesso("Painel criado.");
       setAberta(false);
       limpar();
       router.push(`/panels/${r.dado.id}`);
@@ -116,6 +120,29 @@ export function NovoPainel({ tom = "primario", rotulo = "Novo painel" }: Props) 
             autoFocus
             required
           />
+
+          <div className="flex flex-col gap-2">
+            <Selecao rotulo="Começar de" value={modelo} onChange={(e) => setModelo(e.target.value)}>
+              <option value="">Em branco</option>
+              {MODELOS.map((m) => (
+                <option key={m.chave} value={m.chave}>
+                  {m.nome}
+                </option>
+              ))}
+            </Selecao>
+            <p className="text-grey-400 text-xs">
+              {modelo
+                ? MODELOS.find((m) => m.chave === modelo)?.descricao
+                : "Painel sem faixa nenhuma. Você monta do zero."}
+            </p>
+            {modelo && (
+              <p className="border-grey-300/60 text-grey-400 rounded-lg border border-dashed px-3 py-2 text-xs">
+                O modelo copia a estrutura e as cores do painel que está no ar, e cria o conjunto de
+                dados com as colunas certas. Depois é tudo seu: cor, faixa, card e texto continuam
+                editáveis em Personalizar.
+              </p>
+            )}
+          </div>
 
           <AreaTexto
             rotulo="Descrição"
