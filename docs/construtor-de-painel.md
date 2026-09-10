@@ -131,9 +131,9 @@ nascer visível em vez de nascer numa tabela que ninguém abre.
 
 ## 6. Ordem de construção
 
-1. Tema e presets, com prévia ao vivo. **Modelo pronto.**
-2. Ações de faixa, card e coluna. **Prontas.**
-3. Editor de três colunas com seleção e ajustes.
+1. Tema e presets. **Modelo pronto**, prévia ainda não.
+2. Ações de faixa, card, coluna e tema, com reordenação. **Prontas.**
+3. Editor de três colunas com seleção e ajustes. **É o próximo.**
 4. Arrastar e soltar, com `dnd-kit`.
 5. Renderizador de card, com recharts nos gráficos.
 6. Painel público em `/p/[slug]`, lendo o mesmo renderizador.
