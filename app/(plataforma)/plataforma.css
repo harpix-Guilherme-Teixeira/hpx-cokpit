@@ -1,0 +1,50 @@
+/* Design system harpix, copiado de hpx-svc-front/src/styles/globals.css.
+   Nenhum valor foi inventado aqui: cor, raio e sombra são os mesmos do
+   Santuário, do VDM e do REGENTE, para a área da gestora não parecer outro
+   produto.
+
+   Este arquivo é importado SÓ pelo layout do grupo (plataforma). O cockpit do
+   Jira, que vive em /, continua no CSS puro dele e não recebe o preflight do
+   Tailwind. */
+
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #ef5727;
+  --color-secondary: #fef4f1;
+
+  --color-grey-100: #fafafa;
+  --color-grey-200: #f4f4f6;
+  --color-grey-300: #cccccc;
+  --color-grey-400: #76767e;
+  --color-grey-500: #45454a;
+  --color-grey-600: #212123;
+
+  --color-success: #00a781;
+  --color-error: #ff3d41;
+  --color-info: #a7caf1;
+  --color-alert: #fbbc75;
+
+  --color-blue-100: #a7caf1;
+  --color-blue-500: #2071d0;
+  --color-blue-900: #103a6a;
+
+  --radius-md: 0.425rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.825rem;
+
+  --shadow-sm: 1px 1px 8px 0px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 4px 16px 4px rgba(0, 0, 0, 0.08);
+
+  --font-sans: "Baloo 2", "Geist", system-ui, sans-serif;
+}
+
+/* A fonte fica no contêiner, não no seletor universal, porque o seletor
+   universal do hpx-svc-front vazaria para o cockpit do Jira. */
+.plataforma {
+  font-family: var(--font-sans);
+  color: var(--color-grey-500);
+  background: #ffffff;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}

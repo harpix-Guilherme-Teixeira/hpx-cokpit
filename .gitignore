@@ -1,17 +1,18 @@
 node_modules
 .next
 out
-.env
-.env.local
+.env*
+!.env.example
 .vercel
 *.tsbuildinfo
 next-env.d.ts
 
-# scripts de diagnostico, rodam local e leem .env.local
-amostra.mjs
-artefato.mjs
-cobertura.mjs
-cruzamento.mjs
-auditoria.mjs
-regua.mjs
-porque.mjs
+# Sondas de diagnostico. Rodam contra o Jira de verdade, sao descartaveis e
+# nao fazem parte do produto. Listar uma a uma ja deixou sete de fora.
+*.mjs
+!diagnostico.mjs
+!next.config.mjs
+!postcss.config.mjs
+
+# Capturas de tela usadas para conferir layout.
+*.png
