@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
-import "./globals.css";
+
+/* O CSS de cada área é importado no layout do grupo dela, não aqui: o do
+   cockpit do Jira em (cockpit), o do Tailwind em (plataforma). O raiz cuida só
+   do documento e das fontes. */
 
 export const metadata: Metadata = {
   title: "Cockpit Upstream · harpix",

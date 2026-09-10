@@ -11,6 +11,8 @@ import { NextResponse, type NextRequest } from "next/server";
  *  A trava aqui é de conveniência, não de segurança. Quem protege o dado é a
  *  RLS no Supabase: escrita só para autenticado. Se este middleware sumisse, a
  *  tela abriria e nenhuma gravação passaria. */
+const PROTEGIDAS = ["/dashboard", "/datasets", "/panels"];
+
 export async function middleware(request: NextRequest) {
   let resposta = NextResponse.next({ request });
 
@@ -41,16 +43,16 @@ export async function middleware(request: NextRequest) {
 
   const caminho = request.nextUrl.pathname;
 
-  if (!user && caminho.startsWith("/gestao")) {
+  if (!user && PROTEGIDAS.some((r) => caminho === r || caminho.startsWith(`${r}/`))) {
     const destino = request.nextUrl.clone();
-    destino.pathname = "/entrar";
+    destino.pathname = "/login";
     destino.searchParams.set("de", caminho);
     return NextResponse.redirect(destino);
   }
 
-  if (user && caminho === "/entrar") {
+  if (user && caminho === "/login") {
     const destino = request.nextUrl.clone();
-    destino.pathname = "/gestao";
+    destino.pathname = "/dashboard";
     destino.search = "";
     return NextResponse.redirect(destino);
   }
@@ -61,5 +63,5 @@ export async function middleware(request: NextRequest) {
 export const config = {
   // Só as rotas da área da gestora. O cockpit do Jira em / e a API dele ficam
   // de fora de propósito: são públicos e não têm sessão para renovar.
-  matcher: ["/gestao/:path*", "/entrar"],
+  matcher: ["/dashboard/:path*", "/datasets/:path*", "/panels/:path*", "/login"],
 };

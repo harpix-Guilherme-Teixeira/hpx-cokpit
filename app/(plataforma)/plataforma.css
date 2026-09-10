@@ -25,6 +25,12 @@
   --color-info: #a7caf1;
   --color-alert: #fbbc75;
 
+  /* Tokens do shell, iguais aos do hpx-svc-front: a barra lateral é o
+     grey-600 com texto quase branco, e o fundo do conteúdo é grey-200. */
+  --color-background: #ffffff;
+  --color-sidebar: #212123;
+  --color-sidebar-foreground: #fafafa;
+
   --color-blue-100: #a7caf1;
   --color-blue-500: #2071d0;
   --color-blue-900: #103a6a;

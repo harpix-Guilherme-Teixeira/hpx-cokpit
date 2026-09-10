@@ -62,7 +62,7 @@ export function useLoginForm() {
       setTentativas(0);
       // `refresh` antes de navegar para o middleware enxergar o cookie novo.
       router.refresh();
-      router.replace(params.get("de") ?? "/gestao");
+      router.replace(params.get("de") ?? "/dashboard");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Não foi possível entrar agora.");
     } finally {

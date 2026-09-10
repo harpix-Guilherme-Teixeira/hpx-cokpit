@@ -19,11 +19,11 @@ Sete tabelas, prefixo por domínio, no padrão harpix (minúsculo, PK identity).
 
 ### Domínio `dad_`, os dados
 
-| Tabela | O que guarda |
-| --- | --- |
+| Tabela         | O que guarda                                                                         |
+| -------------- | ------------------------------------------------------------------------------------ |
 | `dad_conjunto` | Uma tabela nomeada pela gestora. Ex.: Documentações de API, Metas da semana, Riscos. |
-| `dad_campo` | As colunas daquele conjunto, com tipo: texto, número, data, opção, booleano. |
-| `dad_registro` | As linhas, em `jsonb` chaveado pela `chave` do campo. |
+| `dad_campo`    | As colunas daquele conjunto, com tipo: texto, número, data, opção, booleano.         |
+| `dad_registro` | As linhas, em `jsonb` chaveado pela `chave` do campo.                                |
 
 O **tipo do campo é a peça central do construtor**. É ele que decide quais
 operadores de filtro aparecem, quais métricas fecham conta e quais gráficos
@@ -32,11 +32,11 @@ mostraria zero sem reclamar.
 
 ### Domínio `pnl_`, o desenho
 
-| Tabela | O que guarda |
-| --- | --- |
+| Tabela       | O que guarda                                                                           |
+| ------------ | -------------------------------------------------------------------------------------- |
 | `pnl_painel` | O painel: slug, nome, descrição, publicado, e `controles`, a barra de filtros do topo. |
-| `pnl_faixa` | O container: título, descrição, número de colunas, ordem. |
-| `pnl_card` | O cartão: tipo, título, **definição**, `config` e ordem. |
+| `pnl_faixa`  | O container: título, descrição, número de colunas, ordem.                              |
+| `pnl_card`   | O cartão: tipo, título, **definição**, `config` e ordem.                               |
 
 ### Domínio `seg_`
 
@@ -57,16 +57,16 @@ número foi medido ou lembrado, e é aí que opinião vira indicador.
 
 ## Tipos de card
 
-| Tipo | Para que serve | Config mínima |
-| --- | --- | --- |
-| `numero` | KPI grande, com variação contra período anterior | conjunto, métrica, campo |
-| `progresso` | Realizado contra meta | conjunto, métrica, campo da meta |
-| `barra` | Comparar categorias | conjunto, campo de categoria, métrica |
-| `linha` | Série no tempo | conjunto, campo de data, métrica |
-| `pizza` | Composição de um todo | conjunto, campo de categoria, métrica |
-| `tabela` | A lista crua, com colunas escolhidas | conjunto, campos visíveis |
-| `lista` | Itens com status, tipo riscos e bloqueios | conjunto, campo de título, campo de status |
-| `texto` | Nota de leitura da gestão | só o texto |
+| Tipo        | Para que serve                                   | Config mínima                              |
+| ----------- | ------------------------------------------------ | ------------------------------------------ |
+| `numero`    | KPI grande, com variação contra período anterior | conjunto, métrica, campo                   |
+| `progresso` | Realizado contra meta                            | conjunto, métrica, campo da meta           |
+| `barra`     | Comparar categorias                              | conjunto, campo de categoria, métrica      |
+| `linha`     | Série no tempo                                   | conjunto, campo de data, métrica           |
+| `pizza`     | Composição de um todo                            | conjunto, campo de categoria, métrica      |
+| `tabela`    | A lista crua, com colunas escolhidas             | conjunto, campos visíveis                  |
+| `lista`     | Itens com status, tipo riscos e bloqueios        | conjunto, campo de título, campo de status |
+| `texto`     | Nota de leitura da gestão                        | só o texto                                 |
 
 ## Métricas
 
@@ -106,14 +106,14 @@ comparar estoque com o passado exige um histórico que ninguém está guardando.
 
 ## Rotas
 
-| Rota | Quem vê |
-| --- | --- |
-| `/` | Cockpit do Jira, como já é hoje |
-| `/entrar` | Público |
-| `/gestao` | Só logado: lista de painéis e conjuntos |
-| `/gestao/dados/[conjunto]` | Só logado: grade de digitação |
-| `/gestao/painel/[id]` | Só logado: construtor |
-| `/p/[slug]` | Público, o painel montado |
+| Rota                       | Quem vê                                 |
+| -------------------------- | --------------------------------------- |
+| `/`                        | Cockpit do Jira, como já é hoje         |
+| `/entrar`                  | Público                                 |
+| `/gestao`                  | Só logado: lista de painéis e conjuntos |
+| `/gestao/dados/[conjunto]` | Só logado: grade de digitação           |
+| `/gestao/painel/[id]`      | Só logado: construtor                   |
+| `/p/[slug]`                | Público, o painel montado               |
 
 ## Segurança
 

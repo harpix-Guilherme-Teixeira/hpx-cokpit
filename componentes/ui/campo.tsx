@@ -2,7 +2,7 @@ import { twMerge } from "tailwind-merge";
 import { useId, type InputHTMLAttributes } from "react";
 
 type Props = InputHTMLAttributes<HTMLInputElement> & {
-  rotulo: string;
+  rotulo?: string;
   erro?: string;
   dica?: string;
 };
@@ -18,10 +18,12 @@ export function Campo({ rotulo, erro, dica, className, id, ...resto }: Props) {
 
   return (
     <div className="flex w-full flex-col gap-1.5">
-      <label htmlFor={idCampo} className="text-grey-600 text-sm font-medium">
-        {rotulo}
-        {resto.required && <span className="text-error ml-0.5">*</span>}
-      </label>
+      {rotulo && (
+        <label htmlFor={idCampo} className="text-grey-600 text-sm font-medium">
+          {rotulo}
+          {resto.required && <span className="text-error ml-0.5">*</span>}
+        </label>
+      )}
 
       <input
         id={idCampo}

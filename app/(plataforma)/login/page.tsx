@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: "Entrar · harpix",
 };
 
-export default function PaginaEntrar() {
+export default function PaginaLogin() {
   return (
     <AuthLayout titulo="Cockpit" subtitulo="Entre para editar os painéis">
       {/* O formulário lê `?de=` para voltar à página que pediu login, e
