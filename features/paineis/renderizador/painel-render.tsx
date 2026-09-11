@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { periodoDoPreset, type Periodo } from "@/lib/painel/motor";
 import { variaveisDoTema, type Tema } from "@/lib/painel/tema";
 import type { PainelCompleto } from "@/lib/painel/consultas";
@@ -24,16 +24,31 @@ type Props = {
   /** Só o editor passa: destaca e permite selecionar clicando. */
   selecao?: { tipo: "faixa" | "card"; id: number } | null;
   aoSelecionar?: (alvo: { tipo: "faixa" | "card"; id: number }) => void;
+  /** Só o editor passa, para a prévia seguir o período que está sendo editado
+   *  antes de salvar. Sem isso mexer no período na prévia não teria como virar
+   *  ajuste do painel, só troca de visualização de quem está olhando. */
+  periodoAoVivo?: PresetPeriodo;
 };
 
-export function PainelRender({ painel, temaAoVivo, selecao, aoSelecionar }: Props) {
+export function PainelRender({
+  painel,
+  temaAoVivo,
+  selecao,
+  aoSelecionar,
+  periodoAoVivo,
+}: Props) {
   const tema = temaAoVivo ?? painel.tema;
   const editavel = typeof aoSelecionar === "function";
 
-  const presetInicial =
-    (painel as unknown as { controles?: { padrao?: PresetPeriodo }[] }).controles?.[0]?.padrao ??
-    "30d";
-  const [preset, setPreset] = useState<PresetPeriodo>(presetInicial);
+  const padraoDoPainel = painel.controles?.[0]?.padrao ?? "30d";
+  const [preset, setPreset] = useState<PresetPeriodo>(periodoAoVivo ?? padraoDoPainel);
+
+  // No editor o padrão muda enquanto a pessoa mexe no ajuste, e a prévia tem
+  // que acompanhar. Quem só visita continua livre para trocar o período sem
+  // que isso mexa no painel de ninguém.
+  useEffect(() => {
+    if (periodoAoVivo) setPreset(periodoAoVivo);
+  }, [periodoAoVivo]);
 
   const periodo: Periodo | null = useMemo(() => periodoDoPreset(preset), [preset]);
 

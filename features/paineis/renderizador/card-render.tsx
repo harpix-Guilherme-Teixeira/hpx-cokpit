@@ -49,6 +49,29 @@ function avisoDeFrescor(fonte: NonNullable<Fonte>): string | null {
   }.`;
 }
 
+/** O card tem coluna escolhida, mas NINGUÉM digitou valor nela ainda.
+ *
+ *  Existe porque traço sozinho é ambíguo: some do "a conta não tinha base" com
+ *  o "o dado nunca foi preenchido", e quem monta o painel fica procurando o
+ *  defeito no card em vez de ir digitar. Só fala quando a coluna está vazia em
+ *  TODAS as linhas: valor que existe mas ficou fora da janela é outra conversa,
+ *  e dizer "não digitaram" ali seria mentira. */
+function avisoSemValor(card: Card, fonte: NonNullable<Fonte>, valor: number | null): string | null {
+  const chave = card.config.campoValor;
+  if (valor !== null || !chave) return null;
+
+  const coluna = fonte.campos.find((c) => c.chave === chave);
+  if (!coluna) return null;
+
+  const algumPreenchido = fonte.registros.some((r) => {
+    const v = r.valores?.[chave];
+    return v !== null && v !== undefined && v !== "";
+  });
+  if (algumPreenchido) return null;
+
+  return `Ainda não digitaram "${coluna.nome}" em nenhuma linha.`;
+}
+
 /** Apresentação do card: o que ele definiu, e o que faltar vem da coluna.
  *
  *  Essa herança é o coração do "se é % ou não": a natureza do número é da
@@ -297,7 +320,7 @@ export function CardRender({
           alguns segundos de diferença. O aviso de hidratação fica suprimido
           porque a diferença nunca muda o que está escrito. */}
       <div className="pnl-nota" suppressHydrationWarning>
-        {avisoDeFrescor(fonte)}
+        {avisoSemValor(card, fonte, r.valor) ?? avisoDeFrescor(fonte)}
       </div>
     </div>
   );

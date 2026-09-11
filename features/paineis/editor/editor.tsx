@@ -14,7 +14,7 @@ import { Botao } from "@/componentes/ui/botao";
 import { PainelRender } from "@/features/paineis/renderizador/painel-render";
 import { salvarTema } from "@/lib/painel/acoes-construtor";
 import type { PainelCompleto } from "@/lib/painel/consultas";
-import type { Campo } from "@/lib/painel/tipos";
+import type { Campo, PresetPeriodo } from "@/lib/painel/tipos";
 import type { Tema } from "@/lib/painel/tema";
 import { Arvore, type Selecao } from "./arvore";
 import { AjustesTema } from "./ajustes-tema";
@@ -41,6 +41,9 @@ export function Editor({ painel, fontes }: { painel: PainelCompleto; fontes: Fon
     titulo: painel.titulo ?? "",
     subtitulo: painel.subtitulo ?? "",
   });
+  const [periodoPadrao, setPeriodoPadrao] = useState<PresetPeriodo>(
+    painel.controles?.[0]?.padrao ?? "30d",
+  );
   const [sujo, setSujo] = useState(false);
 
   /** A estrutura vive aqui para a árvore e a prévia lerem a MESMA lista. Se
@@ -59,7 +62,7 @@ export function Editor({ painel, fontes }: { painel: PainelCompleto; fontes: Fon
 
   function salvar() {
     iniciar(async () => {
-      const r = await salvarTema(painel.id, tema, cabecalho);
+      const r = await salvarTema(painel.id, tema, cabecalho, periodoPadrao);
       if (!r.ok) {
         aviso.erro(r.erro);
         return;
@@ -191,6 +194,7 @@ export function Editor({ painel, fontes }: { painel: PainelCompleto; fontes: Fon
                 setSelecao(alvo);
                 setAba("ajustes");
               }}
+              periodoAoVivo={periodoPadrao}
             />
           </div>
         </main>
@@ -205,9 +209,14 @@ export function Editor({ painel, fontes }: { painel: PainelCompleto; fontes: Fon
             <AjustesTema
               tema={tema}
               cabecalho={cabecalho}
+              periodoPadrao={periodoPadrao}
               aoMudarTema={mudarTema}
               aoMudarCabecalho={(c) => {
                 setCabecalho((x) => ({ ...x, ...c }));
+                setSujo(true);
+              }}
+              aoMudarPeriodo={(p) => {
+                setPeriodoPadrao(p);
                 setSujo(true);
               }}
             />

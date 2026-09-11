@@ -1,6 +1,14 @@
 import { clienteServidor } from "@/lib/supabase/servidor";
 import { comPadrao, type Tema } from "./tema";
-import type { Cadencia, Campo, Card, ConfigCard, Faixa, Registro } from "./tipos";
+import type {
+  Cadencia,
+  Campo,
+  Card,
+  ConfigCard,
+  ControlePainel,
+  Faixa,
+  Registro,
+} from "./tipos";
 
 export type FonteDoPainel = {
   id: number;
@@ -20,6 +28,9 @@ export type PainelCompleto = {
   titulo: string | null;
   subtitulo: string | null;
   publicado: boolean;
+  /** Controles do topo, hoje só o período. Precisa vir na consulta: sem ele o
+   *  painel abre sempre em 30 dias e o padrão escolhido na criação nunca vale. */
+  controles: ControlePainel[];
   tema: Tema;
   faixas: (Faixa & {
     dica: string | null;
@@ -52,7 +63,7 @@ export async function carregarPainel(
   const consulta = supabase
     .from("pnl_painel")
     .select(
-      `id, slug, nome, descricao, titulo, subtitulo, publicado, tema,
+      `id, slug, nome, descricao, titulo, subtitulo, publicado, controles, tema,
        pnl_faixa ( id, painel_id, titulo, descricao, dica, colunas, fundo, recolhivel, visivel, ordem,
          pnl_card ( id, faixa_id, tipo, titulo, definicao, config, largura, ordem ) )`,
     )
@@ -116,7 +127,10 @@ export async function carregarPainel(
   const { pnl_faixa: _descartada, ...cabeca } = painel as typeof painel & { pnl_faixa?: unknown };
 
   return {
-    ...(cabeca as Omit<PainelCompleto, "tema" | "faixas" | "conjuntos"> & { tema: unknown }),
+    ...(cabeca as Omit<PainelCompleto, "tema" | "faixas" | "conjuntos" | "controles"> & {
+      tema: unknown;
+    }),
+    controles: (cabeca.controles as ControlePainel[] | null) ?? [],
     tema: comPadrao(cabeca.tema as Partial<Tema>),
     faixas: faixasBrutas as PainelCompleto["faixas"],
     conjuntos,

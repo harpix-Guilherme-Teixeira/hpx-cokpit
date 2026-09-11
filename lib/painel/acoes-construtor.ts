@@ -8,6 +8,7 @@ import {
   EXIGIDO_POR_CARD,
   metricaPrecisaDeCampo,
   type ConfigCard,
+  type PresetPeriodo,
   type TipoCampo,
   type TipoCard,
 } from "./tipos";
@@ -58,6 +59,7 @@ export async function salvarTema(
   painelId: number,
   tema: Partial<Tema>,
   cabecalho?: { titulo?: string; subtitulo?: string },
+  periodoPadrao?: PresetPeriodo,
 ): Promise<Resultado<null>> {
   const contexto = await exigirAutor();
   if (!contexto.ok) return { ok: false, erro: contexto.erro };
@@ -68,6 +70,11 @@ export async function salvarTema(
       tema,
       titulo: cabecalho?.titulo?.trim() || null,
       subtitulo: cabecalho?.subtitulo?.trim() || null,
+      // O período padrão é do painel, não de quem olha. Só entra no update
+      // quando veio, senão salvar a cor de um painel apagaria o recorte dele.
+      ...(periodoPadrao
+        ? { controles: [{ tipo: "periodo", rotulo: "Período", padrao: periodoPadrao }] }
+        : {}),
       atualizado_por: contexto.usuario.id,
     })
     .eq("id", painelId);

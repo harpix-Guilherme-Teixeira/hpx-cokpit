@@ -4,6 +4,15 @@ import { Campo } from "@/componentes/ui/campo";
 import { Selecao } from "@/componentes/ui/selecao";
 import { AreaTexto } from "@/componentes/ui/area-texto";
 import { PRESETS, type Tema } from "@/lib/painel/tema";
+import type { PresetPeriodo } from "@/lib/painel/tipos";
+
+const PERIODOS: { valor: PresetPeriodo; rotulo: string }[] = [
+  { valor: "7d", rotulo: "Últimos 7 dias" },
+  { valor: "30d", rotulo: "Últimos 30 dias" },
+  { valor: "estaSemana", rotulo: "Esta semana" },
+  { valor: "semanaPassada", rotulo: "Semana passada" },
+  { valor: "esteMes", rotulo: "Este mês" },
+];
 
 function Cor({
   rotulo,
@@ -53,13 +62,17 @@ function Grupo({ titulo, children }: { titulo: string; children: React.ReactNode
 export function AjustesTema({
   tema,
   cabecalho,
+  periodoPadrao,
   aoMudarTema,
   aoMudarCabecalho,
+  aoMudarPeriodo,
 }: {
   tema: Tema;
   cabecalho: { titulo: string; subtitulo: string };
+  periodoPadrao: PresetPeriodo;
   aoMudarTema: (m: Partial<Tema>) => void;
   aoMudarCabecalho: (m: Partial<{ titulo: string; subtitulo: string }>) => void;
+  aoMudarPeriodo: (p: PresetPeriodo) => void;
 }) {
   return (
     <div>
@@ -85,6 +98,21 @@ export function AjustesTema({
             </option>
           ))}
           <option value="personalizado">personalizado</option>
+        </Selecao>
+      </Grupo>
+
+      <Grupo titulo="Período">
+        <Selecao
+          rotulo="Período padrão"
+          value={periodoPadrao}
+          onChange={(e) => aoMudarPeriodo(e.target.value as PresetPeriodo)}
+          dica="O recorte em que o painel abre. Quem visita pode trocar no topo, e essa troca é só dele: não muda o padrão daqui."
+        >
+          {PERIODOS.map((p) => (
+            <option key={p.valor} value={p.valor}>
+              {p.rotulo}
+            </option>
+          ))}
         </Selecao>
       </Grupo>
 
