@@ -130,7 +130,7 @@ async function aplicarModelo(
   painelId: number,
   modelo: Modelo,
   usuarioId: string,
-) {
+): Promise<number | undefined> {
   const preset = PRESETS.find((p) => p.chave === modelo.preset)?.tema ?? TEMA_CLARO;
 
   await supabase
@@ -146,6 +146,7 @@ async function aplicarModelo(
   // O conjunto vem junto porque os painéis originais leem o Jira ao vivo e
   // aqui o dado é manual. Sem ele o modelo entregaria cards sem fonte.
   let conjuntoId: number | undefined;
+  const primeiraData = modelo.conjunto?.colunas.find((c) => c.tipo === "data");
 
   if (modelo.conjunto) {
     const chaveBase = aoSlug(modelo.conjunto.nome);
@@ -166,6 +167,16 @@ async function aplicarModelo(
           nome: modelo.conjunto.nome,
           chave: chaveBase,
           descricao: modelo.conjunto.descricao,
+          // Grão, cadência e fonte vêm do modelo, não fixos aqui. Os cockpits
+          // são de MEDIÇÃO: cada linha é o valor de uma semana, digitado. Sem
+          // declarar isso, o conjunto nasceria como item e os cards contariam
+          // linhas em vez de mostrar o último valor. A cadência é o que faz o
+          // aviso de frescor aparecer quando a semana passa sem linha nova.
+          grao: modelo.conjunto.grao,
+          cadencia: modelo.conjunto.cadencia,
+          fonte: modelo.conjunto.fonte,
+          campo_data: primeiraData ? aoSlug(primeiraData.nome) : null,
+          guardar_historico: true,
           atualizado_por: usuarioId,
         })
         .select("id")
@@ -183,14 +194,17 @@ async function aplicarModelo(
             formato: c.tipo === "numero" ? (c.formato ?? "inteiro") : "texto",
             casas: c.tipo === "numero" ? (c.casas ?? 0) : 0,
             opcoes: [],
+            // A coluna de data ganha o papel de período. É ela que liga cada
+            // linha ao recorte do painel e faz a comparação com a semana
+            // anterior existir.
+            papel: primeiraData && c.nome === primeiraData.nome ? "periodo" : null,
+            obrigatorio: primeiraData ? c.nome === primeiraData.nome : false,
             ordem: i,
           })),
         );
       }
     }
   }
-
-  const campoData = modelo.conjunto?.colunas.find((c) => c.tipo === "data");
 
   for (let i = 0; i < modelo.faixas.length; i += 1) {
     const fm = modelo.faixas[i];
@@ -227,8 +241,8 @@ async function aplicarModelo(
                 campoCategoria: cm.categoria ? aoSlug(cm.categoria) : undefined,
                 // Só liga o período quando o conjunto tem data. Ligar sem data
                 // deixaria o card comparando contra uma janela inexistente.
-                campoData: campoData && cm.comparar ? aoSlug(campoData.nome) : undefined,
-                comparar: !!cm.comparar && !!campoData,
+                campoData: primeiraData && cm.comparar ? aoSlug(primeiraData.nome) : undefined,
+                comparar: !!cm.comparar && !!primeiraData,
                 subirEhBom: cm.subirEhBom,
               }),
           destaque: cm.destaque,
@@ -238,6 +252,70 @@ async function aplicarModelo(
       })),
     );
   }
+
+  return conjuntoId;
+}
+
+/** Cria o painel inteiro a partir de um modelo, em UM clique.
+ *
+ *  Painel, tema, faixas, cards, o conjunto de dados com as colunas certas e
+ *  uma primeira linha já com a data de hoje. A pessoa abre a grade e digita os
+ *  números, sem passar por formulário nenhum.
+ *
+ *  A linha em branco existe por um motivo prático: sem ela a grade abre vazia
+ *  e o primeiro passo vira "descobrir onde cria linha". */
+export async function criarPainelPronto(
+  chave: string,
+): Promise<Resultado<{ painelId: number; conjuntoId?: number }>> {
+  const modelo = MODELOS.find((m) => m.chave === chave);
+  if (!modelo) return { ok: false, erro: "Esse modelo não existe mais." };
+
+  const contexto = await exigirAutor();
+  if (!contexto.ok) return { ok: false, erro: contexto.erro };
+  const { supabase, usuario } = contexto;
+
+  const slug = await slugLivre(supabase, "pnl_painel", modelo.nome);
+
+  const { data, error } = await supabase
+    .from("pnl_painel")
+    .insert({
+      nome: modelo.nome,
+      slug,
+      descricao: modelo.descricao,
+      publicado: false,
+      controles: [{ tipo: "periodo", rotulo: "Período", padrao: "30d" }],
+      atualizado_por: usuario.id,
+    })
+    .select("id")
+    .single();
+
+  if (error) return { ok: false, erro: error.message };
+
+  const conjuntoId = await aplicarModelo(supabase, data.id, modelo, usuario.id);
+
+  if (conjuntoId) {
+    const primeiraData = modelo.conjunto?.colunas.find((c) => c.tipo === "data");
+    const hoje = new Date().toISOString().slice(0, 10);
+
+    const { count } = await supabase
+      .from("dad_registro")
+      .select("id", { count: "exact", head: true })
+      .eq("conjunto_id", conjuntoId);
+
+    // Só semeia se o conjunto está vazio. Reaproveitar um conjunto que já tem
+    // medições e acrescentar uma linha em branco confundiria a contagem.
+    if ((count ?? 0) === 0) {
+      await supabase.from("dad_registro").insert({
+        conjunto_id: conjuntoId,
+        valores: primeiraData ? { [aoSlug(primeiraData.nome)]: hoje } : {},
+        atualizado_por: usuario.id,
+      });
+    }
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath("/datasets");
+  return { ok: true, dado: { painelId: data.id, conjuntoId } };
 }
 
 export async function renomearPainel(id: number, nome: string): Promise<Resultado<null>> {

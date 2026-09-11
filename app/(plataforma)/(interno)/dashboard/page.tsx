@@ -3,6 +3,7 @@ import Link from "next/link";
 import { IconChevronRight } from "@tabler/icons-react";
 import { Aviso, Cartao, Pagina, Secao, TituloPagina, Vazio } from "@/componentes/layout/pagina";
 import { NovoPainel } from "@/features/paineis/components/novo-painel";
+import { ModelosProntos } from "@/features/paineis/modelo-pronto";
 import { clienteServidor } from "@/lib/supabase/servidor";
 
 export const metadata: Metadata = { title: "Painéis · harpix" };
@@ -26,6 +27,10 @@ export default async function PaginaDashboard() {
         descricao="Cada painel é uma tela pública, montada por faixas e cards. O dado vem dos conjuntos que você digita em Dados."
         acao={<NovoPainel />}
       />
+
+      <Secao titulo="Comece pronto">
+        <ModelosProntos />
+      </Secao>
 
       <Secao titulo="Seus painéis" contador={paineis?.length}>
         {error ? (

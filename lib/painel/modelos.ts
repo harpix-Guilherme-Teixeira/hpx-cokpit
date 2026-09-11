@@ -1,5 +1,5 @@
 import type { Formato } from "./formato";
-import type { Metrica, TipoCampo, TipoCard } from "./tipos";
+import type { Cadencia, Grao, Metrica, TipoCampo, TipoCard } from "./tipos";
 
 /** Modelos de painel: estrutura pronta, não só aparência.
  *
@@ -57,7 +57,17 @@ export type Modelo = {
   descricao: string;
   preset: string;
   cabecalho?: { titulo: string; subtitulo: string };
-  conjunto?: { nome: string; descricao: string; colunas: ColunaModelo[] };
+  conjunto?: {
+    nome: string;
+    descricao: string;
+    /** De onde sai cada número e como conferir. Vai para `dad_conjunto.fonte` e
+     *  aparece na tela. É o que separa medição de chute: sem a origem escrita,
+     *  o número digitado vira uma afirmação que ninguém consegue refazer. */
+    fonte: string;
+    grao: Grao;
+    cadencia: Cadencia;
+    colunas: ColunaModelo[];
+  };
   faixas: FaixaModelo[];
 };
 
@@ -81,6 +91,10 @@ export const MODELO_SEMANA: Modelo = {
     nome: "Medições da semana",
     descricao:
       "Uma linha por semana. A data é o que liga os cards ao período do painel e o que permite comparar com a semana anterior.",
+    fonte:
+      "Jira, projeto PTF. A produção do agente conta pelo rótulo rascunho-agente, que é a ORIGEM da história; contar por épico pai esconde as órfãs. Horas saem do apontamento da sub-tarefa. Cada card diz na definição exatamente o que contar.",
+    grao: "medicao",
+    cadencia: "semanal",
     colunas: [
       { nome: "Semana", tipo: "data" },
       N("Histórias criadas pelo agente"),
@@ -246,6 +260,10 @@ export const MODELO_COCKPIT: Modelo = {
   conjunto: {
     nome: "Medições do cockpit",
     descricao: "Uma linha por medição. A data liga os cards ao período do painel.",
+    fonte:
+      "Jira, projeto PTF sob a iniciativa HPX-31. Números acumulados, não do mês. O rótulo rascunho-agente é a origem da história. Cada card diz na definição exatamente o que contar.",
+    grao: "medicao",
+    cadencia: "semanal",
     colunas: [
       { nome: "Data da medição", tipo: "data" },
       N("Todas do agente"),
