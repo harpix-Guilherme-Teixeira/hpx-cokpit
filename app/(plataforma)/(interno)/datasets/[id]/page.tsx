@@ -1,12 +1,23 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { IconArrowLeft } from "@tabler/icons-react";
-import { Cartao, Pagina, Secao, TituloPagina, Vazio } from "@/componentes/layout/pagina";
+import { IconArrowLeft, IconPlus } from "@tabler/icons-react";
+import { Aviso, Pagina, Secao, TituloPagina, Vazio } from "@/componentes/layout/pagina";
+import { Botao } from "@/componentes/ui/botao";
+import { ColarPlanilha } from "@/features/datasets/colar/colar-planilha";
+import { GavetaColuna } from "@/features/datasets/coluna/gaveta-coluna";
+import { Grade } from "@/features/datasets/grade/grade";
+import { ROTULO_FORMATO } from "@/lib/painel/formato";
+import type { Campo, Registro } from "@/lib/painel/tipos";
 import { clienteServidor } from "@/lib/supabase/servidor";
 
 export const dynamic = "force-dynamic";
 
-const ROTULO_TIPO: Record<string, string> = {
+/** Acima disso a grade vira milhares de campos editáveis na mesma tela e o
+ *  navegador engasga. O dado continua todo no banco e nos cards; só a grade
+ *  mostra as mais recentes e diz que cortou. */
+const TETO_GRADE = 1000;
+
+const ROTULO_TIPO: Record<Campo["tipo"], string> = {
   texto: "Texto",
   numero: "Número",
   data: "Data",
@@ -29,17 +40,29 @@ export default async function PaginaConjunto({ params }: { params: Promise<{ id:
 
   if (!conjunto) notFound();
 
-  const [{ data: campos }, { count }] = await Promise.all([
+  const [campos, registros, perfis] = await Promise.all([
     supabase
       .from("dad_campo")
-      .select("id, chave, nome, tipo, obrigatorio, ordem")
+      .select(
+        "id, conjunto_id, chave, nome, tipo, formato, casas, unidade, descricao, opcoes, obrigatorio, ordem",
+      )
       .eq("conjunto_id", conjuntoId)
       .order("ordem"),
     supabase
       .from("dad_registro")
-      .select("id", { count: "exact", head: true })
-      .eq("conjunto_id", conjuntoId),
+      .select("id, conjunto_id, valores, atualizado_em, atualizado_por", { count: "exact" })
+      .eq("conjunto_id", conjuntoId)
+      .order("id", { ascending: false })
+      .limit(TETO_GRADE),
+    supabase.from("seg_perfil").select("id, nome"),
   ]);
+
+  const listaCampos = (campos.data ?? []) as Campo[];
+  // Mais recentes primeiro na busca, para o corte levar as antigas; na tela, a
+  // ordem de digitação, que é como a pessoa lembra das linhas.
+  const listaRegistros = ((registros.data ?? []) as Registro[]).reverse();
+  const total = registros.count ?? listaRegistros.length;
+  const autores = Object.fromEntries((perfis.data ?? []).map((p) => [p.id, p.nome]));
 
   return (
     <Pagina>
@@ -51,31 +74,71 @@ export default async function PaginaConjunto({ params }: { params: Promise<{ id:
         Dados
       </Link>
 
-      <TituloPagina titulo={conjunto.nome} descricao={conjunto.descricao ?? undefined} />
+      <TituloPagina
+        titulo={conjunto.nome}
+        descricao={conjunto.descricao ?? undefined}
+        acao={
+          <div className="flex flex-wrap gap-2">
+            <ColarPlanilha conjuntoId={conjuntoId} campos={listaCampos} />
+            <GavetaColuna conjuntoId={conjuntoId}>
+              <Botao>
+                <IconPlus size={16} />
+                Nova coluna
+              </Botao>
+            </GavetaColuna>
+          </div>
+        }
+      />
 
-      <Secao titulo="Colunas" contador={campos?.length ?? 0}>
-        <Cartao>
-          <ul className="divide-grey-300/50 divide-y">
-            {(campos ?? []).map((c) => (
-              <li key={c.id} className="flex items-center justify-between px-5 py-3">
-                <div>
-                  <p className="text-grey-600 text-sm font-medium">{c.nome}</p>
-                  <p className="text-grey-400 text-xs">{c.chave}</p>
-                </div>
-                <span className="bg-grey-200 text-grey-500 rounded-full px-2.5 py-1 text-xs">
-                  {ROTULO_TIPO[c.tipo] ?? c.tipo}
-                </span>
-              </li>
+      <Secao titulo="Colunas" contador={listaCampos.length}>
+        {listaCampos.length === 0 ? (
+          <Vazio
+            titulo="Nenhuma coluna"
+            texto="Crie a primeira coluna para a grade aparecer. O tipo dela decide o que os cards vão conseguir calcular."
+          />
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {listaCampos.map((c) => (
+              <GavetaColuna key={c.id} conjuntoId={conjuntoId} coluna={c}>
+                <button
+                  type="button"
+                  title={c.descricao ?? "Clique para editar"}
+                  className="border-grey-300/60 hover:border-primary flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-left shadow-sm transition-colors"
+                >
+                  <span className="text-grey-600 text-sm font-medium">
+                    {c.nome}
+                    {c.obrigatorio && <span className="text-error">*</span>}
+                  </span>
+                  <span className="bg-grey-200 text-grey-500 rounded-full px-2 py-0.5 text-[11px]">
+                    {c.tipo === "numero" ? ROTULO_FORMATO[c.formato] : ROTULO_TIPO[c.tipo]}
+                  </span>
+                </button>
+              </GavetaColuna>
             ))}
-          </ul>
-        </Cartao>
+          </div>
+        )}
       </Secao>
 
-      <Secao titulo="Linhas" contador={count ?? 0}>
-        <Vazio
-          titulo="Nenhuma linha ainda"
-          texto="A grade de digitação, com colar direto do Excel, é o próximo passo. É o único jeito realista de entrar com centenas de linhas."
-        />
+      <Secao titulo="Linhas" contador={total}>
+        {registros.error ? (
+          <Aviso>Não consegui ler as linhas: {registros.error.message}</Aviso>
+        ) : listaCampos.length === 0 ? (
+          <Vazio titulo="Sem colunas, sem grade" texto="Crie uma coluna acima." />
+        ) : (
+          <>
+            {total > TETO_GRADE && (
+              <p className="text-grey-400 mb-3 text-xs">
+                Mostrando as {TETO_GRADE} linhas mais recentes de {total}. Os cards contam todas.
+              </p>
+            )}
+            <Grade
+              conjuntoId={conjuntoId}
+              campos={listaCampos}
+              registros={listaRegistros}
+              autores={autores}
+            />
+          </>
+        )}
       </Secao>
     </Pagina>
   );
