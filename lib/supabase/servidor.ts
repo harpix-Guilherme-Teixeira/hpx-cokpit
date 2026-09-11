@@ -33,11 +33,20 @@ export async function clienteServidor() {
   );
 }
 
-/** Quem está logado, ou null. Nunca confie em `getSession()` no servidor: ele
- *  lê o cookie sem conferir assinatura. `getUser()` valida com o Supabase. */
+/** Quem está logado, ou null.
+ *
+ *  `getClaims()` confere a assinatura do JWT localmente com a chave pública (o
+ *  projeto assina em ES256) e só vai à rede para buscar a chave, que fica em
+ *  cache. `getUser()` fazia uma ida ao servidor de auth em toda página, uns 450
+ *  ms daqui. `getSession()` continua proibido no servidor: lê o cookie sem
+ *  conferir assinatura nenhuma. */
 export async function usuarioAtual() {
   const supabase = await clienteServidor();
-  const { data, error } = await supabase.auth.getUser();
-  if (error) return null;
-  return data.user ?? null;
+  const { data, error } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (error || !claims?.sub) return null;
+  return {
+    id: claims.sub,
+    email: typeof claims.email === "string" ? claims.email : undefined,
+  };
 }

@@ -60,7 +60,67 @@ export type Campo = {
   descricao: string | null;
   opcoes: string[];
   obrigatorio: boolean;
+  /** O que a coluna representa no item: título, status, datas. É o que deixa o
+   *  construtor sugerir "contar por status" em vez de somar toda coluna. */
+  papel: PapelCampo | null;
   ordem: number;
+};
+
+/** O que é UMA linha. Item: cada linha é uma coisa e a plataforma conta.
+ *  Medição: cada linha é o valor de um período e a plataforma só repete. */
+export type Grao = "item" | "medicao";
+
+export type Cadencia = "diaria" | "semanal" | "quinzenal" | "mensal" | "sob_demanda";
+
+export type PapelCampo =
+  | "titulo"
+  | "status"
+  | "responsavel"
+  | "data_evento"
+  | "data_conclusao"
+  | "periodo";
+
+/** Coluna como é desenhada na criação do conjunto, antes de existir no banco. */
+export type ColunaDefinicao = {
+  nome: string;
+  tipo: TipoCampo;
+  formato: Formato;
+  casas: number;
+  unidade?: string;
+  descricao?: string;
+  opcoes: string[];
+  obrigatorio: boolean;
+  papel?: PapelCampo;
+  /** Posição da coluna na planilha colada, quando veio de colagem. É o que
+   *  liga a coluna às células certas na importação das linhas. */
+  origem?: number;
+};
+
+export const ROTULO_CADENCIA: Record<Cadencia, string> = {
+  diaria: "diária",
+  semanal: "semanal",
+  quinzenal: "quinzenal",
+  mensal: "mensal",
+  sob_demanda: "sob demanda",
+};
+
+/** Depois de quantos dias sem linha nova o dado é considerado velho. Sob
+ *  demanda não envelhece, porque não tem prazo combinado. */
+export const DIAS_CADENCIA: Record<Cadencia, number | null> = {
+  diaria: 1,
+  semanal: 7,
+  quinzenal: 15,
+  mensal: 31,
+  sob_demanda: null,
+};
+
+export const ROTULO_PAPEL: Record<PapelCampo, string> = {
+  titulo: "Título do item",
+  status: "Status",
+  responsavel: "Responsável",
+  data_evento: "Data em que aconteceu",
+  data_conclusao: "Data de conclusão",
+  periodo: "Período da medição",
 };
 
 export type Registro = {

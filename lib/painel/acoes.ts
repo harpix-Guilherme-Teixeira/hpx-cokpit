@@ -2,9 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { clienteServidor, usuarioAtual } from "@/lib/supabase/servidor";
-import type { ConfigCard, PresetPeriodo, TipoCampo } from "./tipos";
+import type { Cadencia, ColunaDefinicao, ConfigCard, Grao, PresetPeriodo } from "./tipos";
+import { ROTULO_CADENCIA } from "./tipos";
 import { MODELOS, type Modelo } from "./modelos";
 import { PRESETS, TEMA_CLARO } from "./tema";
+import { sugerirCards } from "./sugestoes";
+import { importarLinhas } from "./acoes-dados";
 
 export type Resultado<T> = { ok: true; dado: T } | { ok: false; erro: string };
 
@@ -287,22 +290,36 @@ export async function excluirPainel(id: number): Promise<Resultado<null>> {
  *  Conjuntos de dados
  *  ------------------------------------------------------------------ */
 
-export type ColunaNova = { nome: string; tipo: TipoCampo; opcoes?: string[] };
-
 export type NovoConjuntoEntrada = {
   nome: string;
   descricao?: string;
-  colunas: ColunaNova[];
-  /** Painel onde este conjunto vai aparecer. Escolhido, o conjunto já nasce
-   *  com uma faixa e um card por coluna numérica, mais a tabela. Dado que
-   *  nasce invisível é dado que ninguém confere, e um mês depois ninguém sabe
-   *  se está certo. */
+  /** O que é UMA linha. Muda tudo que vem depois: item é contado, medição é
+   *  repetida. */
+  grao: Grao;
+  colunas: ColunaDefinicao[];
+  /** Posição, dentro de `colunas`, da coluna de data que define "da semana". */
+  campoDataIndice?: number | null;
+  guardarHistorico: boolean;
+  dono?: string;
+  cadencia: Cadencia;
+  /** De onde o dado vem e como conferir. */
+  fonte?: string;
+  /** Painel onde este conjunto aparece. Dado que nasce invisível é dado que
+   *  ninguém confere, e um mês depois ninguém sabe se está certo. */
   painelId?: number;
+  /** Chaves de `sugerirCards` escolhidas na prévia. O servidor recalcula as
+   *  sugestões e usa só estas: configuração de card não vem do navegador. */
+  cards: string[];
+  /** Linhas da planilha colada. Cada coluna com `origem` diz qual posição da
+   *  planilha alimenta ela. */
+  linhas?: string[][];
 };
 
 export async function criarConjunto(
   entrada: NovoConjuntoEntrada,
-): Promise<Resultado<{ id: number }>> {
+): Promise<
+  Resultado<{ id: number; importadas: number; puladas: number; avisoImportacao?: string }>
+> {
   const limpo = entrada.nome.trim();
   if (limpo.length < 2) return { ok: false, erro: "Dê um nome ao conjunto." };
 
@@ -340,12 +357,34 @@ export async function criarConjunto(
 
   if (existe) return { ok: false, erro: `Já existe um conjunto chamado "${limpo}".` };
 
+  const coluna = (i: number | null | undefined) => (typeof i === "number" ? colunas[i] : undefined);
+  const daData = coluna(entrada.campoDataIndice);
+
+  // Medição sem data não tem período: o card mostraria o último valor
+  // digitado, de qualquer semana, e a comparação com o período anterior
+  // simplesmente não existiria.
+  if (entrada.grao === "medicao" && !daData) {
+    return {
+      ok: false,
+      erro: "Escolha a coluna de data que diz de qual período é cada medição.",
+    };
+  }
+  if (daData && daData.tipo !== "data") {
+    return { ok: false, erro: `A coluna "${daData.nome}" não é do tipo data.` };
+  }
+
   const { data, error } = await supabase
     .from("dad_conjunto")
     .insert({
       nome: limpo,
       chave,
       descricao: entrada.descricao?.trim() || null,
+      grao: entrada.grao,
+      dono: entrada.dono?.trim() || null,
+      cadencia: entrada.cadencia,
+      fonte: entrada.fonte?.trim() || null,
+      campo_data: daData ? aoSlug(daData.nome) : null,
+      guardar_historico: entrada.guardarHistorico,
       atualizado_por: usuario.id,
     })
     .select("id")
@@ -359,7 +398,13 @@ export async function criarConjunto(
       chave: aoSlug(c.nome),
       nome: c.nome.trim(),
       tipo: c.tipo,
-      opcoes: c.tipo === "opcao" ? (c.opcoes ?? []) : [],
+      formato: c.tipo === "numero" ? c.formato : "texto",
+      casas: c.tipo === "numero" ? c.casas : 0,
+      unidade: c.unidade?.trim() || null,
+      descricao: c.descricao?.trim() || null,
+      opcoes: c.tipo === "opcao" ? c.opcoes.filter((o) => o.trim()) : [],
+      obrigatorio: c.obrigatorio,
+      papel: c.papel ?? null,
       ordem: i,
     })),
   );
@@ -372,31 +417,60 @@ export async function criarConjunto(
     return { ok: false, erro: `Não consegui criar as colunas: ${erroCampos.message}` };
   }
 
-  if (entrada.painelId) {
-    await montarFaixaDoConjunto(supabase, entrada.painelId, data.id, limpo, colunas);
+  let importadas = 0;
+  let puladas = 0;
+  let avisoImportacao: string | undefined;
+
+  if (entrada.linhas?.length) {
+    // O mapa liga cada posição da planilha à coluna que ficou com aquela
+    // origem. Coluna apagada no meio do caminho simplesmente não recebe nada.
+    const largura = Math.max(...entrada.linhas.map((l) => l.length));
+    const mapa = Array.from({ length: largura }, (_, j) => {
+      const c = colunas.find((x) => x.origem === j);
+      return c ? aoSlug(c.nome) : null;
+    });
+
+    const r = await importarLinhas(data.id, entrada.linhas, mapa);
+    if (r.ok) {
+      importadas = r.dado.inseridas;
+      puladas = r.dado.puladas;
+    } else {
+      // O conjunto fica de pé. Perder as colunas porque a importação falhou
+      // seria desproporcional, e a pessoa pode colar de novo pela grade.
+      avisoImportacao = r.erro;
+    }
+  }
+
+  if (entrada.painelId && entrada.cards.length) {
+    await montarFaixaDoConjunto(supabase, entrada.painelId, data.id, limpo, entrada);
     revalidatePath(`/panels/${entrada.painelId}`);
   }
 
   revalidatePath("/datasets");
-  return { ok: true, dado: { id: data.id } };
+  return { ok: true, dado: { id: data.id, importadas, puladas, avisoImportacao } };
 }
 
-/** Monta a faixa inicial do conjunto no painel escolhido.
+/** Monta a faixa inicial do conjunto no painel escolhido, com os cards que a
+ *  pessoa marcou na prévia.
  *
- *  Um card por coluna numérica, mais uma tabela com tudo. A definição de cada
- *  card sai da descrição da coluna, e quando ela não existe, de uma frase que
- *  diz de onde o número vem. Card sem definição não passaria na conferência do
- *  editor, e criar aqui um que não passaria lá seria incoerente.
+ *  As sugestões são recalculadas AQUI, a partir do grão e das colunas. O
+ *  navegador manda só as chaves escolhidas: configuração de card vinda de fora
+ *  seria dado não conferido virando card com cara de oficial.
  *
- *  Falha aqui NÃO derruba a criação do conjunto: o dado já está salvo, e
- *  perder a tabela inteira porque a decoração falhou seria desproporcional. */
+ *  Falha aqui NÃO derruba a criação do conjunto: o dado já está salvo, e perder
+ *  a tabela inteira porque a decoração falhou seria desproporcional. */
 async function montarFaixaDoConjunto(
   supabase: Awaited<ReturnType<typeof clienteServidor>>,
   painelId: number,
   conjuntoId: number,
   nomeConjunto: string,
-  colunas: ColunaNova[],
+  entrada: NovoConjuntoEntrada,
 ) {
+  const escolhidos = sugerirCards(entrada.grao, entrada.colunas, nomeConjunto).filter((s) =>
+    entrada.cards.includes(s.chave),
+  );
+  if (escolhidos.length === 0) return;
+
   const { data: ultima } = await supabase
     .from("pnl_faixa")
     .select("ordem")
@@ -405,16 +479,21 @@ async function montarFaixaDoConjunto(
     .limit(1)
     .maybeSingle();
 
-  const numericas = colunas.filter((c) => c.tipo === "numero");
-  const totalCards = numericas.length + 1;
-  const colunasDaFaixa = Math.min(4, Math.max(1, totalCards));
+  const pequenos = escolhidos.filter((s) => s.largura === 1).length;
+  const colunasDaFaixa = Math.min(4, Math.max(2, pequenos));
 
   const { data: faixa, error } = await supabase
     .from("pnl_faixa")
     .insert({
       painel_id: painelId,
       titulo: nomeConjunto,
-      descricao: null,
+      descricao: entrada.fonte?.trim() || null,
+      // A dica diz de quanto em quanto tempo aquilo deveria ser atualizado e
+      // quem atualiza, na própria faixa. Quem lê o painel vê o prazo junto do
+      // número, em vez de descobrir depois que estava velho.
+      dica: entrada.dono?.trim()
+        ? `atualização ${ROTULO_CADENCIA[entrada.cadencia]}, ${entrada.dono.trim()}`
+        : `atualização ${ROTULO_CADENCIA[entrada.cadencia]}`,
       colunas: colunasDaFaixa,
       ordem: (ultima?.ordem ?? -1) + 1,
     })
@@ -423,42 +502,19 @@ async function montarFaixaDoConjunto(
 
   if (error || !faixa) return;
 
-  // Tipado na mão porque os dois formatos de card têm config diferente e o
-  // inferido do primeiro elemento não aceitaria o segundo.
-  const cards: {
-    faixa_id: number;
-    tipo: string;
-    titulo: string;
-    definicao: string;
-    config: ConfigCard;
-    largura: number;
-    ordem: number;
-  }[] = numericas.map((c, i) => ({
-    faixa_id: faixa.id,
-    tipo: "numero",
-    titulo: c.nome.trim(),
-    definicao: `Soma de ${c.nome.trim()} no conjunto ${nomeConjunto}. Dado manual.`,
-    config: {
-      conjuntoId,
-      metrica: "soma" as const,
-      campoValor: aoSlug(c.nome),
-      destaque: i === 0,
-    },
-    largura: 1,
-    ordem: i,
-  }));
-
-  cards.push({
-    faixa_id: faixa.id,
-    tipo: "tabela",
-    titulo: `${nomeConjunto}, linhas`,
-    definicao: `Todas as linhas digitadas no conjunto ${nomeConjunto}, com as colunas na ordem em que foram criadas.`,
-    config: { conjuntoId, colunas: colunas.map((c) => aoSlug(c.nome)) },
-    largura: colunasDaFaixa,
-    ordem: numericas.length,
-  });
-
-  await supabase.from("pnl_card").insert(cards);
+  await supabase.from("pnl_card").insert(
+    escolhidos.map((s, i) => ({
+      faixa_id: faixa.id,
+      tipo: s.tipo,
+      titulo: s.titulo,
+      definicao: s.definicao,
+      config: { ...s.config, conjuntoId } as ConfigCard,
+      // Card nunca pode ser mais largo que a faixa: de 4 numa faixa de 2 ele
+      // quebra a grade e empurra os vizinhos para fora.
+      largura: Math.min(s.largura, colunasDaFaixa),
+      ordem: i,
+    })),
+  );
 }
 
 export async function excluirConjunto(id: number): Promise<Resultado<null>> {

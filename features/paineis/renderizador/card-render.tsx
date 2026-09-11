@@ -15,9 +15,39 @@ import {
 } from "recharts";
 import { formatar, formatarVariacao, type Apresentacao } from "@/lib/painel/formato";
 import { resolverCard, type Periodo } from "@/lib/painel/motor";
-import type { Campo, Card, Registro } from "@/lib/painel/tipos";
+import {
+  DIAS_CADENCIA,
+  ROTULO_CADENCIA,
+  type Cadencia,
+  type Campo,
+  type Card,
+  type Registro,
+} from "@/lib/painel/tipos";
 
-export type Fonte = { campos: Campo[]; registros: Registro[] } | undefined;
+export type Fonte =
+  | { campos: Campo[]; registros: Registro[]; cadencia?: Cadencia; dono?: string | null }
+  | undefined;
+
+/** Dado manual envelhece calado. Se o conjunto tem prazo combinado e passou
+ *  dele sem linha nova, o card diz, junto do número. Sem isso o painel mostra
+ *  com a mesma confiança o que foi medido ontem e o que foi medido em agosto. */
+function avisoDeFrescor(fonte: NonNullable<Fonte>): string | null {
+  if (fonte.registros.length === 0) return "Nenhuma linha digitada neste conjunto ainda.";
+
+  const limite = fonte.cadencia ? DIAS_CADENCIA[fonte.cadencia] : null;
+  if (!limite || !fonte.cadencia) return null;
+
+  const ultima = fonte.registros.reduce(
+    (maior, r) => Math.max(maior, Date.parse(r.atualizado_em)),
+    0,
+  );
+  const dias = Math.floor((Date.now() - ultima) / 86_400_000);
+  if (dias <= limite) return null;
+
+  return `Atualização ${ROTULO_CADENCIA[fonte.cadencia]}, sem linha nova há ${dias} dias${
+    fonte.dono ? `, com ${fonte.dono}` : ""
+  }.`;
+}
 
 /** Apresentação do card: o que ele definiu, e o que faltar vem da coluna.
  *
@@ -263,6 +293,12 @@ export function CardRender({
       {periodo && r.ignoraPeriodo && (
         <div className="pnl-nota">Este card não usa o período: nenhuma data foi escolhida.</div>
       )}
+      {/* A conta usa a data de hoje, que o servidor e o navegador podem ler com
+          alguns segundos de diferença. O aviso de hidratação fica suprimido
+          porque a diferença nunca muda o que está escrito. */}
+      <div className="pnl-nota" suppressHydrationWarning>
+        {avisoDeFrescor(fonte)}
+      </div>
     </div>
   );
 }

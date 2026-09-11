@@ -44,7 +44,7 @@ export default async function PaginaConjunto({ params }: { params: Promise<{ id:
     supabase
       .from("dad_campo")
       .select(
-        "id, conjunto_id, chave, nome, tipo, formato, casas, unidade, descricao, opcoes, obrigatorio, ordem",
+        "id, conjunto_id, chave, nome, tipo, formato, casas, unidade, descricao, opcoes, obrigatorio, papel, ordem",
       )
       .eq("conjunto_id", conjuntoId)
       .order("ordem"),

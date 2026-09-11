@@ -37,9 +37,12 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims confere a assinatura do token localmente, com a chave pública
+  // ES256 do projeto, em vez de perguntar ao servidor de auth a cada página.
+  // A pergunta custava uns 450 ms daqui até us-east-2, em toda navegação. Ela
+  // também renova a sessão vencida, então o cookie continua sendo reescrito.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
 
   const caminho = request.nextUrl.pathname;
 

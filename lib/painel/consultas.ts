@@ -1,6 +1,16 @@
 import { clienteServidor } from "@/lib/supabase/servidor";
 import { comPadrao, type Tema } from "./tema";
-import type { Campo, Card, ConfigCard, Faixa, Registro } from "./tipos";
+import type { Cadencia, Campo, Card, ConfigCard, Faixa, Registro } from "./tipos";
+
+export type FonteDoPainel = {
+  id: number;
+  nome: string;
+  grao: "item" | "medicao";
+  dono: string | null;
+  cadencia: Cadencia;
+  campos: Campo[];
+  registros: Registro[];
+};
 
 export type PainelCompleto = {
   id: number;
@@ -21,14 +31,19 @@ export type PainelCompleto = {
   /** Conjuntos usados pelos cards, com campos e linhas. Vem tudo junto porque
    *  o painel inteiro é uma tela só: buscar por card faria N requisições e a
    *  tela abriria em ondas. */
-  conjuntos: Record<number, { id: number; nome: string; campos: Campo[]; registros: Registro[] }>;
+  conjuntos: Record<number, FonteDoPainel>;
 };
 
-/** Carrega o painel inteiro em quatro consultas, sem laço.
+type FaixaComCards = PainelCompleto["faixas"][number] & { pnl_card?: Card[] };
+
+/** Carrega o painel inteiro em DUAS idas ao banco.
  *
- *  A ordem importa: primeiro o painel, depois faixas, depois cards, e só então
- *  os conjuntos que os cards realmente usam. Carregar todos os conjuntos
- *  traria linhas que nenhum card mostra. */
+ *  A primeira traz painel, faixas e cards juntos, pela relação entre as
+ *  tabelas. A versão anterior fazia painel, depois faixas, depois cards, depois
+ *  dados: quatro idas em fila, cada uma custando uns 450 ms daqui até
+ *  us-east-2, antes de pintar qualquer coisa. A segunda busca só os conjuntos
+ *  que algum card usa, porque carregar todos traria linhas que nenhum card
+ *  mostra. */
 export async function carregarPainel(
   onde: { id: number } | { slug: string },
 ): Promise<PainelCompleto | null> {
@@ -36,7 +51,13 @@ export async function carregarPainel(
 
   const consulta = supabase
     .from("pnl_painel")
-    .select("id, slug, nome, descricao, titulo, subtitulo, publicado, tema");
+    .select(
+      `id, slug, nome, descricao, titulo, subtitulo, publicado, tema,
+       pnl_faixa ( id, painel_id, titulo, descricao, dica, colunas, fundo, recolhivel, visivel, ordem,
+         pnl_card ( id, faixa_id, tipo, titulo, definicao, config, largura, ordem ) )`,
+    )
+    .order("ordem", { referencedTable: "pnl_faixa" })
+    .order("ordem", { referencedTable: "pnl_faixa.pnl_card" });
 
   const { data: painel } = await (
     "id" in onde ? consulta.eq("id", onde.id) : consulta.eq("slug", onde.slug)
@@ -44,26 +65,17 @@ export async function carregarPainel(
 
   if (!painel) return null;
 
-  const { data: faixas } = await supabase
-    .from("pnl_faixa")
-    .select("id, painel_id, titulo, descricao, dica, colunas, fundo, recolhivel, visivel, ordem")
-    .eq("painel_id", painel.id)
-    .order("ordem");
+  // A consulta aninhada devolve as faixas dentro do painel, e o tipo inferido
+  // pelo cliente não casa com o nosso: o `unknown` no meio é o que diz ao
+  // TypeScript que a forma conferida é a de baixo, não a dele.
+  const faixasBrutas = ((painel as unknown as { pnl_faixa?: FaixaComCards[] }).pnl_faixa ?? []).map(
+    ({ pnl_card, ...faixa }) => ({ ...faixa, cards: (pnl_card ?? []) as Card[] }),
+  );
 
-  const idsFaixa = (faixas ?? []).map((f) => f.id);
-
-  const { data: cards } = idsFaixa.length
-    ? await supabase
-        .from("pnl_card")
-        .select("id, faixa_id, tipo, titulo, definicao, config, largura, ordem")
-        .in("faixa_id", idsFaixa)
-        .order("ordem")
-    : { data: [] as Card[] };
-
-  // Só os conjuntos que algum card aponta.
   const idsConjunto = [
     ...new Set(
-      (cards ?? [])
+      faixasBrutas
+        .flatMap((f) => f.cards)
         .map((c) => (c.config as ConfigCard)?.conjuntoId)
         .filter((v): v is number => typeof v === "number"),
     ),
@@ -73,11 +85,11 @@ export async function carregarPainel(
 
   if (idsConjunto.length) {
     const [{ data: metas }, { data: campos }, { data: registros }] = await Promise.all([
-      supabase.from("dad_conjunto").select("id, nome").in("id", idsConjunto),
+      supabase.from("dad_conjunto").select("id, nome, grao, dono, cadencia").in("id", idsConjunto),
       supabase
         .from("dad_campo")
         .select(
-          "id, conjunto_id, chave, nome, tipo, formato, casas, unidade, descricao, opcoes, obrigatorio, ordem",
+          "id, conjunto_id, chave, nome, tipo, formato, casas, unidade, descricao, opcoes, obrigatorio, papel, ordem",
         )
         .in("conjunto_id", idsConjunto)
         .order("ordem"),
@@ -92,19 +104,21 @@ export async function carregarPainel(
       conjuntos[m.id] = {
         id: m.id,
         nome: m.nome,
+        grao: m.grao,
+        dono: m.dono,
+        cadencia: m.cadencia,
         campos: (campos ?? []).filter((c) => c.conjunto_id === m.id) as Campo[],
         registros: (registros ?? []).filter((r) => r.conjunto_id === m.id) as Registro[],
       };
     }
   }
 
+  const { pnl_faixa: _descartada, ...cabeca } = painel as typeof painel & { pnl_faixa?: unknown };
+
   return {
-    ...painel,
-    tema: comPadrao(painel.tema as Partial<Tema>),
-    faixas: (faixas ?? []).map((f) => ({
-      ...f,
-      cards: (cards ?? []).filter((c) => c.faixa_id === f.id) as Card[],
-    })) as PainelCompleto["faixas"],
+    ...(cabeca as Omit<PainelCompleto, "tema" | "faixas" | "conjuntos"> & { tema: unknown }),
+    tema: comPadrao(cabeca.tema as Partial<Tema>),
+    faixas: faixasBrutas as PainelCompleto["faixas"],
     conjuntos,
   };
 }
@@ -116,11 +130,11 @@ export async function listarFontes() {
   const supabase = await clienteServidor();
 
   const [{ data: conjuntos }, { data: campos }] = await Promise.all([
-    supabase.from("dad_conjunto").select("id, nome, chave").order("nome"),
+    supabase.from("dad_conjunto").select("id, nome, chave, grao").order("nome"),
     supabase
       .from("dad_campo")
       .select(
-        "id, conjunto_id, chave, nome, tipo, formato, casas, unidade, descricao, opcoes, obrigatorio, ordem",
+        "id, conjunto_id, chave, nome, tipo, formato, casas, unidade, descricao, opcoes, obrigatorio, papel, ordem",
       )
       .order("ordem"),
   ]);
