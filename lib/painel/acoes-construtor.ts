@@ -404,6 +404,56 @@ export async function excluirColuna(id: number, conjuntoId: number): Promise<Res
   return { ok: true, dado: null };
 }
 
+export type UsoDaColuna = { card: string; painel: string; publicado: boolean };
+
+/** Quais cards leem uma coluna, para a exclusão dizer o que vai esvaziar.
+ *
+ *  O card guarda a chave da coluna dentro do `config`, em jsonb, e não existe
+ *  chave estrangeira para o banco impedir ou avisar. Sem esta conta, apagar a
+ *  coluna deixava o card mudo, e em painel publicado quem abre o link via o
+ *  vazio. A leitura é pública pela RLS, então não passa por `exigirAutor`. */
+export async function usoDaColuna(
+  conjuntoId: number,
+  chave: string,
+): Promise<Resultado<UsoDaColuna[]>> {
+  const supabase = await clienteServidor();
+
+  const { data, error } = await supabase
+    .from("pnl_card")
+    .select("titulo, config, pnl_faixa!inner(pnl_painel!inner(nome, publicado))")
+    .eq("config->>conjuntoId", String(conjuntoId));
+
+  if (error) return { ok: false, erro: error.message };
+
+  type Linha = {
+    titulo: string;
+    config: ConfigCard | null;
+    pnl_faixa: { pnl_painel: { nome: string; publicado: boolean } };
+  };
+
+  const usa = (config: ConfigCard) =>
+    [
+      config.campoValor,
+      config.campoCategoria,
+      config.campoData,
+      config.campoMeta,
+      config.campoTitulo,
+      config.campoStatus,
+    ].includes(chave) ||
+    (config.colunas ?? []).includes(chave) ||
+    (config.filtros ?? []).some((f) => f.campo === chave);
+
+  const uso = ((data ?? []) as unknown as Linha[])
+    .filter((l) => usa(l.config ?? {}))
+    .map((l) => ({
+      card: l.titulo,
+      painel: l.pnl_faixa.pnl_painel.nome,
+      publicado: l.pnl_faixa.pnl_painel.publicado,
+    }));
+
+  return { ok: true, dado: uso };
+}
+
 export async function reordenarColunas(
   conjuntoId: number,
   idsNaOrdem: number[],

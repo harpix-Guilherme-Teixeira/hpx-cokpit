@@ -72,6 +72,29 @@ function avisoSemValor(card: Card, fonte: NonNullable<Fonte>, valor: number | nu
   return `Ainda não digitaram "${coluna.nome}" em nenhuma linha.`;
 }
 
+/** O card aponta para uma coluna que não existe mais no conjunto.
+ *
+ *  Acontece quando alguém apaga a coluna: o card guarda só a chave, e o banco
+ *  não tem como impedir. Sem este aviso o card vira um traço mudo, que parece
+ *  defeito do painel e não consequência de uma exclusão. */
+function avisoColunaApagada(card: Card, fonte: NonNullable<Fonte>): string | null {
+  const c = card.config;
+  const chaves = [
+    c.campoValor,
+    c.campoCategoria,
+    c.campoData,
+    c.campoMeta,
+    c.campoTitulo,
+    c.campoStatus,
+    ...(c.colunas ?? []),
+  ].filter((x): x is string => !!x);
+
+  const existentes = new Set(fonte.campos.map((f) => f.chave));
+  if (chaves.every((k) => existentes.has(k))) return null;
+
+  return "A coluna que este card usava foi apagada do conjunto. Escolha outra em Personalizar.";
+}
+
 /** Apresentação do card: o que ele definiu, e o que faltar vem da coluna.
  *
  *  Essa herança é o coração do "se é % ou não": a natureza do número é da
@@ -320,7 +343,9 @@ export function CardRender({
           alguns segundos de diferença. O aviso de hidratação fica suprimido
           porque a diferença nunca muda o que está escrito. */}
       <div className="pnl-nota" suppressHydrationWarning>
-        {avisoSemValor(card, fonte, r.valor) ?? avisoDeFrescor(fonte)}
+        {avisoColunaApagada(card, fonte) ??
+          avisoSemValor(card, fonte, r.valor) ??
+          avisoDeFrescor(fonte)}
       </div>
     </div>
   );

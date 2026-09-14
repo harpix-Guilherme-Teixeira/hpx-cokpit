@@ -12,6 +12,11 @@ type Pedido = {
   confirmar?: string;
   cancelar?: string;
   perigo?: boolean;
+  /** Lista embaixo do texto, como os cards que uma exclusão vai esvaziar. */
+  itens?: string[];
+  /** Linha em vermelho, para consequência que sai do sistema, como painel
+   *  publicado que quem tem o link vai ver quebrado. */
+  alerta?: string;
 };
 
 type Aberto = Pedido & { resolver: (v: boolean) => void };
@@ -72,6 +77,16 @@ export function useConfirmacao() {
             <div>
               <h2 className="text-grey-600 text-base font-semibold">{aberto.titulo}</h2>
               {aberto.texto && <p className="text-grey-400 mt-1 text-sm">{aberto.texto}</p>}
+              {aberto.itens && aberto.itens.length > 0 && (
+                <ul className="text-grey-500 mt-2 max-h-40 list-disc overflow-y-auto pl-5 text-sm">
+                  {aberto.itens.map((item, i) => (
+                    <li key={i}>{item}</li>
+                  ))}
+                </ul>
+              )}
+              {aberto.alerta && (
+                <p className="text-error mt-2 text-sm font-medium">{aberto.alerta}</p>
+              )}
             </div>
           </div>
 
