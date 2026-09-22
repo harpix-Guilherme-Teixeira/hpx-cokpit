@@ -43,7 +43,8 @@ export function janelaDaSemana(agora = new Date()) {
     /** Data da linha: o dia em que a foto foi tirada. */
     semana: comoData(ano, mes, dia),
     inicio: comoData(ano, mes, dia - desdeSegunda),
-    ehSexta: diaDaSemana === 5,
+    /** Domingo = 0. É o que o agendador compara com o dia configurado. */
+    diaDaSemana,
   };
 }
 

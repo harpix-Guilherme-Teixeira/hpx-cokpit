@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/review-semanal",
-      "schedule": "0 15 * * 5"
+      "schedule": "0 15 * * *"
     }
   ]
 }

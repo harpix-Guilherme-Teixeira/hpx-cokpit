@@ -15,6 +15,24 @@ const CONJUNTO = 4;
  *  linha inteira. Regravar a linha apagaria o que ela digitou. */
 const DO_ROBO = ["historias-criadas-pelo-agente", "atividades-concluidas", "bloqueadas-agora"];
 
+const DIAS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+
+/** Guarda o desfecho para a tela do Agendador poder dizer se rodou.
+ *
+ *  Sem isto, uma rodada que falha em silêncio só apareceria na reunião, quando
+ *  alguém olhasse o número velho achando que era o desta semana. */
+async function registrarRodada(status: "ok" | "erro" | "pulado", detalhe: string) {
+  await clienteServico()
+    .from("cfg_agendador")
+    .update({
+      ultima_rodada_em: new Date().toISOString(),
+      ultimo_status: status,
+      ultimo_detalhe: detalhe.slice(0, 400),
+      atualizado_em: new Date().toISOString(),
+    })
+    .eq("conjunto_id", CONJUNTO);
+}
+
 type Origem = { tipo: "cron" } | { tipo: "pessoa"; usuarioId: string; email: string };
 
 /** Dois portões, e os dois são fechados.
@@ -76,10 +94,26 @@ export async function GET(request: NextRequest) {
   const janela = janelaDaSemana(agora);
   const forcado = request.nextUrl.searchParams.get("forcar") === "1";
 
-  // O plano hobby só dispara uma vez por dia, e o Vercel pode disparar duas.
-  // A trava aqui é o que garante que só a rodada de sexta grava.
-  if (!janela.ehSexta && !forcado) {
-    return NextResponse.json({ ignorado: "hoje não é sexta", ...janela });
+  // O Vercel chama TODO DIA, porque o plano hobby não aceita mais que isso e
+  // porque a hora vive no vercel.json. Quem decide se hoje é o dia é a
+  // configuração, que a gestora muda pela tela do Agendador.
+  const { data: config } = await clienteServico()
+    .from("cfg_agendador")
+    .select("ativo, dia_semana")
+    .eq("conjunto_id", CONJUNTO)
+    .maybeSingle();
+
+  if (!forcado) {
+    if (!config?.ativo) {
+      return NextResponse.json({ ignorado: "o agendamento está desligado", ...janela });
+    }
+    if (config.dia_semana !== janela.diaDaSemana) {
+      await registrarRodada("pulado", `hoje não é ${DIAS[config.dia_semana]}`);
+      return NextResponse.json({
+        ignorado: `hoje não é ${DIAS[config.dia_semana]}`,
+        ...janela,
+      });
+    }
   }
 
   // Quem clica lê com a PRÓPRIA credencial: é a leitura mais honesta, e evita
@@ -141,6 +175,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    await registrarRodada(
+      "ok",
+      `semana de ${medida.semana}, lido com a conta de ${medida.identidade}: agente ${medida.historiasCriadasPeloAgente}, concluídas ${medida.atividadesConcluidas}, bloqueadas ${medida.bloqueadasAgora}`,
+    );
+
     return NextResponse.json({
       ok: true,
       lidoPor: medida.identidade,
@@ -155,6 +194,7 @@ export async function GET(request: NextRequest) {
     // painel vira decisão errada na reunião.
     const mensagem = e instanceof Error ? e.message : "falha desconhecida";
     console.error("[cron review-semanal]", mensagem);
+    await registrarRodada("erro", mensagem);
     return NextResponse.json({ erro: mensagem }, { status: 502 });
   }
 }

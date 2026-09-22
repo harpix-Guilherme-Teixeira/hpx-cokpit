@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { twMerge } from "tailwind-merge";
 import {
+  IconCalendarClock,
   IconLayoutDashboard,
   IconPlugConnected,
   IconTable,
@@ -105,6 +106,15 @@ export function Sidebar({ aberto, fechar }: Props) {
           aoNavegar={fechar}
         >
           Dados
+        </ItemSidebar>
+
+        <ItemSidebar
+          href="/scheduler"
+          ativo={ativo("/scheduler")}
+          icone={<IconCalendarClock size={20} />}
+          aoNavegar={fechar}
+        >
+          Agendador
         </ItemSidebar>
 
         <ItemSidebar

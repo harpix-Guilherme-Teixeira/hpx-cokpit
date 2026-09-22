@@ -4,9 +4,14 @@ import { IconArrowLeft, IconExternalLink, IconWand } from "@tabler/icons-react";
 import { Botao } from "@/componentes/ui/botao";
 import { InterruptorPublicar } from "@/features/paineis/components/interruptor-publicar";
 import { PainelRender } from "@/features/paineis/renderizador/painel-render";
+import { AtualizarDoJira } from "@/features/datasets/atualizar-jira/atualizar-jira";
 import { carregarPainel } from "@/lib/painel/consultas";
 
 export const dynamic = "force-dynamic";
+
+/** O botão de atualizar só aparece no painel que lê o conjunto alimentado pelo
+ *  Jira. Nos outros ele não teria o que buscar. */
+const CONJUNTO_DO_JIRA = 4;
 
 export default async function PaginaPainel({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -42,6 +47,7 @@ export default async function PaginaPainel({ params }: { params: Promise<{ id: s
         </Link>
 
         <div className="flex flex-wrap items-center gap-2">
+          {painel.conjuntos[CONJUNTO_DO_JIRA] && <AtualizarDoJira />}
           {painel.publicado && (
             <a
               href={`/p/${painel.slug}`}

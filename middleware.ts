@@ -11,7 +11,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *  A trava aqui é de conveniência, não de segurança. Quem protege o dado é a
  *  RLS no Supabase: escrita só para autenticado. Se este middleware sumisse, a
  *  tela abriria e nenhuma gravação passaria. */
-const PROTEGIDAS = ["/dashboard", "/datasets", "/panels", "/integrations"];
+const PROTEGIDAS = ["/dashboard", "/datasets", "/panels", "/integrations", "/scheduler"];
 
 export async function middleware(request: NextRequest) {
   let resposta = NextResponse.next({ request });
@@ -71,6 +71,7 @@ export const config = {
     "/datasets/:path*",
     "/panels/:path*",
     "/integrations/:path*",
+    "/scheduler/:path*",
     "/login",
   ],
 };
