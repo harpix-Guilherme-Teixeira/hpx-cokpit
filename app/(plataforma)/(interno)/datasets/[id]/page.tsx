@@ -3,6 +3,7 @@ import Link from "next/link";
 import { IconArrowLeft, IconPlus } from "@tabler/icons-react";
 import { Aviso, Pagina, Secao, TituloPagina, Vazio } from "@/componentes/layout/pagina";
 import { Botao } from "@/componentes/ui/botao";
+import { AtualizarDoJira } from "@/features/datasets/atualizar-jira/atualizar-jira";
 import { ColarPlanilha } from "@/features/datasets/colar/colar-planilha";
 import { GavetaColuna } from "@/features/datasets/coluna/gaveta-coluna";
 import { Grade } from "@/features/datasets/grade/grade";
@@ -79,6 +80,7 @@ export default async function PaginaConjunto({ params }: { params: Promise<{ id:
         descricao={conjunto.descricao ?? undefined}
         acao={
           <div className="flex flex-wrap gap-2">
+            {conjunto.chave === "review-semanal" && <AtualizarDoJira />}
             <ColarPlanilha conjuntoId={conjuntoId} campos={listaCampos} />
             <GavetaColuna conjuntoId={conjuntoId}>
               <Botao>

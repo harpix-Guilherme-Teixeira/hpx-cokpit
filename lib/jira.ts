@@ -1,6 +1,21 @@
 // Camada de acesso ao Jira. Roda SOMENTE no servidor.
 // O token nunca chega ao navegador: esta pasta nao e importada por componente client.
 
+import { AsyncLocalStorage } from "node:async_hooks";
+
+// Credencial de UMA pessoa, vinda do OAuth, valendo so dentro de comCredencial.
+// Existe porque o cockpit publico continua lendo com o token do ambiente,
+// enquanto o cron le com a conta que a pessoa conectou em Integracoes. Passar a
+// credencial por parametro exigiria mudar a assinatura de toda funcao daqui e
+// de quem as chama; o contexto assincrono troca a origem sem tocar em nenhuma.
+type Injetada = { token: string; cloudId: string };
+const contexto = new AsyncLocalStorage<Injetada>();
+
+/** Roda `fn` usando a credencial OAuth de alguem, em vez da do ambiente. */
+export function comCredencial<T>(cred: Injetada, fn: () => Promise<T>): Promise<T> {
+  return contexto.run(cred, fn);
+}
+
 const BASE_CONFIG = (process.env.JIRA_BASE_URL ?? "").replace(/\/+$/, "");
 const EMAIL = process.env.JIRA_EMAIL ?? "";
 const TOKEN_BRUTO = (process.env.JIRA_API_TOKEN ?? "").trim();
@@ -25,6 +40,17 @@ const BASE =
     ? `https://api.atlassian.com/ex/jira/${CLOUD_ID}`
     : BASE_CONFIG;
 
+/** Credencial injetada manda; sem ela, vale a do ambiente. */
+function modo(): "bearer" | "basic" {
+  return contexto.getStore() ? "bearer" : MODO_AUTH;
+}
+
+function base(): string {
+  const injetada = contexto.getStore();
+  if (injetada) return `https://api.atlassian.com/ex/jira/${injetada.cloudId}`;
+  return BASE;
+}
+
 export function credenciaisAusentes(): string[] {
   const faltando: string[] = [];
   if (!TOKEN) faltando.push("JIRA_API_TOKEN");
@@ -38,12 +64,14 @@ export function credenciaisAusentes(): string[] {
 }
 
 function autorizacao(): string {
+  const injetada = contexto.getStore();
+  if (injetada) return `Bearer ${injetada.token}`;
   if (MODO_AUTH === "bearer") return `Bearer ${TOKEN}`;
   return "Basic " + Buffer.from(`${EMAIL}:${TOKEN}`).toString("base64");
 }
 
 async function jira(caminho: string, corpo: unknown): Promise<any> {
-  const res = await fetch(`${BASE}${caminho}`, {
+  const res = await fetch(`${base()}${caminho}`, {
     method: "POST",
     headers: {
       Authorization: autorizacao(),
@@ -56,7 +84,7 @@ async function jira(caminho: string, corpo: unknown): Promise<any> {
   if (!res.ok) {
     const texto = await res.text().catch(() => "");
     throw new Error(
-      `Jira respondeu ${res.status} em ${caminho} (auth ${MODO_AUTH}). ${texto.slice(0, 200)}`,
+      `Jira respondeu ${res.status} em ${caminho} (auth ${modo()}). ${texto.slice(0, 200)}`,
     );
   }
   return res.json();
@@ -70,7 +98,7 @@ async function jira(caminho: string, corpo: unknown): Promise<any> {
 // `/myself` e o unico que falha de verdade, entao ele roda ANTES de qualquer
 // contagem e o painel so exibe numero depois que alguem se identificou.
 export async function quemSou(): Promise<string> {
-  const res = await fetch(`${BASE}/rest/api/3/myself`, {
+  const res = await fetch(`${base()}/rest/api/3/myself`, {
     headers: { Authorization: autorizacao(), Accept: "application/json" },
     cache: "no-store",
   });
