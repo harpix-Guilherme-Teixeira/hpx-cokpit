@@ -15,19 +15,25 @@ const CONJUNTO = 4;
  *  linha inteira. Regravar a linha apagaria o que ela digitou. */
 const DO_ROBO = ["historias-criadas-pelo-agente", "atividades-concluidas", "bloqueadas-agora"];
 
+type Origem = { tipo: "cron" } | { tipo: "pessoa"; usuarioId: string; email: string };
+
 /** Dois portões, e os dois são fechados.
  *
  *  O Vercel entra pelo `CRON_SECRET`, que ele mesmo manda no cabeçalho. Uma
  *  pessoa entra pela sessão, desde que esteja na lista de quem pode escrever,
- *  e é isso que permite testar pelo navegador sem o segredo circular por chat
- *  ou por histórico de comando. Sem nenhum dos dois, a rota não roda. */
-async function naoAutorizado(request: NextRequest) {
+ *  e é isso que permite atualizar pelo navegador sem o segredo circular por
+ *  chat ou por histórico de comando. Sem nenhum dos dois, a rota não roda. */
+async function autorizar(request: NextRequest): Promise<{ origem?: Origem; erro?: string }> {
   const segredo = process.env.CRON_SECRET;
-  if (segredo && request.headers.get("authorization") === `Bearer ${segredo}`) return null;
+  if (segredo && request.headers.get("authorization") === `Bearer ${segredo}`) {
+    return { origem: { tipo: "cron" } };
+  }
 
   const usuario = await usuarioAtual();
   if (!usuario?.email) {
-    return segredo ? "Credencial inválida." : "CRON_SECRET não está configurado neste ambiente.";
+    return {
+      erro: segredo ? "Credencial inválida." : "CRON_SECRET não está configurado neste ambiente.",
+    };
   }
 
   const supabase = await clienteServidor();
@@ -37,7 +43,8 @@ async function naoAutorizado(request: NextRequest) {
     .eq("email", usuario.email)
     .maybeSingle();
 
-  return data ? null : `${usuario.email} não está na lista de quem pode alimentar o painel.`;
+  if (!data) return { erro: `${usuario.email} não está na lista de quem pode alimentar o painel.` };
+  return { origem: { tipo: "pessoa", usuarioId: usuario.id, email: usuario.email } };
 }
 
 /** De quem é a credencial que o robô usa. Com mais de uma conta conectada ele
@@ -62,8 +69,8 @@ async function contaDaAutomacao() {
 }
 
 export async function GET(request: NextRequest) {
-  const barrado = await naoAutorizado(request);
-  if (barrado) return NextResponse.json({ erro: barrado }, { status: 401 });
+  const porta = await autorizar(request);
+  if (!porta.origem) return NextResponse.json({ erro: porta.erro }, { status: 401 });
 
   const agora = new Date();
   const janela = janelaDaSemana(agora);
@@ -75,14 +82,26 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ignorado: "hoje não é sexta", ...janela });
   }
 
-  const dono = await contaDaAutomacao();
+  // Quem clica lê com a PRÓPRIA credencial: é a leitura mais honesta, e evita
+  // ter que eleger uma conta só porque duas pessoas conectaram. A eleição fica
+  // para o cron, que não tem ninguém por trás.
+  const dono =
+    porta.origem.tipo === "pessoa"
+      ? { conta: { usuario_id: porta.origem.usuarioId, conta: porta.origem.email } }
+      : await contaDaAutomacao();
+
   if (!dono.conta) return NextResponse.json({ erro: dono.erro }, { status: 412 });
 
   try {
     const cred = await credencialViva(dono.conta.usuario_id);
     if (!cred) {
       return NextResponse.json(
-        { erro: `A conexão de ${dono.conta.conta} não vale mais. Reconecte em Integrações.` },
+        {
+          erro:
+            porta.origem.tipo === "pessoa"
+              ? "Você ainda não conectou sua conta do Jira. Faça isso em Integrações."
+              : `A conexão de ${dono.conta.conta} não vale mais. Reconecte em Integrações.`,
+        },
         { status: 412 },
       );
     }
