@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { IconArrowLeft, IconPlus } from "@tabler/icons-react";
+import { IconArrowLeft, IconPlus, IconSettings } from "@tabler/icons-react";
 import { Aviso, Pagina, Secao, TituloPagina, Vazio } from "@/componentes/layout/pagina";
 import { Botao } from "@/componentes/ui/botao";
 import { AtualizarDoJira } from "@/features/datasets/atualizar-jira/atualizar-jira";
 import { ColarPlanilha } from "@/features/datasets/colar/colar-planilha";
+import { AjustesConjunto } from "@/features/datasets/conjunto/ajustes-conjunto";
 import { GavetaColuna } from "@/features/datasets/coluna/gaveta-coluna";
 import { Grade } from "@/features/datasets/grade/grade";
 import { ROTULO_FORMATO } from "@/lib/painel/formato";
@@ -35,7 +36,7 @@ export default async function PaginaConjunto({ params }: { params: Promise<{ id:
 
   const { data: conjunto } = await supabase
     .from("dad_conjunto")
-    .select("id, chave, nome, descricao")
+    .select("id, chave, nome, descricao, dono, cadencia, fonte")
     .eq("id", conjuntoId)
     .maybeSingle();
 
@@ -81,6 +82,19 @@ export default async function PaginaConjunto({ params }: { params: Promise<{ id:
         acao={
           <div className="flex flex-wrap gap-2">
             {conjunto.chave === "review-semanal" && <AtualizarDoJira />}
+            <AjustesConjunto
+              id={conjunto.id}
+              nome={conjunto.nome}
+              descricao={conjunto.descricao}
+              dono={conjunto.dono}
+              cadencia={conjunto.cadencia}
+              fonte={conjunto.fonte}
+            >
+              <Botao tom="contorno">
+                <IconSettings size={16} />
+                Ajustes
+              </Botao>
+            </AjustesConjunto>
             <ColarPlanilha conjuntoId={conjuntoId} campos={listaCampos} />
             <GavetaColuna conjuntoId={conjuntoId}>
               <Botao>

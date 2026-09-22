@@ -595,6 +595,95 @@ async function montarFaixaDoConjunto(
   );
 }
 
+export type AjustesConjunto = {
+  nome: string;
+  descricao?: string;
+  dono?: string;
+  cadencia: Cadencia;
+  fonte?: string;
+};
+
+/** Edita o cabeçalho do conjunto. Não mexe em coluna nem em linha.
+ *
+ *  A CHAVE não muda de propósito: ela é o que liga o conjunto ao modelo que o
+ *  criou e o que impede um segundo conjunto igual nascer por engano. Renomear
+ *  é assunto de tela; a chave é identidade. */
+export async function salvarConjunto(
+  id: number,
+  entrada: AjustesConjunto,
+): Promise<Resultado<null>> {
+  const nome = entrada.nome.trim();
+  if (nome.length < 2) return { ok: false, erro: "Dê um nome ao conjunto." };
+
+  const contexto = await exigirAutor();
+  if (!contexto.ok) return { ok: false, erro: contexto.erro };
+
+  const { error } = await contexto.supabase
+    .from("dad_conjunto")
+    .update({
+      nome,
+      descricao: entrada.descricao?.trim() || null,
+      dono: entrada.dono?.trim() || null,
+      cadencia: entrada.cadencia,
+      fonte: entrada.fonte?.trim() || null,
+      atualizado_por: contexto.usuario.id,
+    })
+    .eq("id", id);
+
+  if (error) return { ok: false, erro: error.message };
+
+  revalidatePath("/datasets");
+  revalidatePath(`/datasets/${id}`);
+  return { ok: true, dado: null };
+}
+
+export type UsoDoConjunto = {
+  colunas: number;
+  linhas: number;
+  paineis: { nome: string; publicado: boolean; cards: number }[];
+};
+
+/** O tamanho do estrago antes de apagar.
+ *
+ *  Apagar o conjunto leva colunas e linhas junto, por cascade, e isso não volta.
+ *  Os cards que apontavam para ele NÃO caem: viram card sem fonte, e a tela diz
+ *  isso. Contar tudo antes é o que transforma "tem certeza?" numa pergunta
+ *  respondível. */
+export async function usoDoConjunto(id: number): Promise<Resultado<UsoDoConjunto>> {
+  const supabase = await clienteServidor();
+
+  const [{ count: colunas }, { count: linhas }, { data: cards }] = await Promise.all([
+    supabase.from("dad_campo").select("id", { count: "exact", head: true }).eq("conjunto_id", id),
+    supabase
+      .from("dad_registro")
+      .select("id", { count: "exact", head: true })
+      .eq("conjunto_id", id),
+    supabase
+      .from("pnl_card")
+      .select("id, pnl_faixa!inner(pnl_painel!inner(nome, publicado))")
+      .eq("config->>conjuntoId", String(id)),
+  ]);
+
+  type Linha = { pnl_faixa: { pnl_painel: { nome: string; publicado: boolean } } };
+  const porPainel = new Map<string, { nome: string; publicado: boolean; cards: number }>();
+
+  for (const linha of (cards ?? []) as unknown as Linha[]) {
+    const p = linha.pnl_faixa.pnl_painel;
+    const atual = porPainel.get(p.nome) ?? { nome: p.nome, publicado: p.publicado, cards: 0 };
+    atual.cards += 1;
+    porPainel.set(p.nome, atual);
+  }
+
+  return {
+    ok: true,
+    dado: {
+      colunas: colunas ?? 0,
+      linhas: linhas ?? 0,
+      paineis: [...porPainel.values()],
+    },
+  };
+}
+
 export async function excluirConjunto(id: number): Promise<Resultado<null>> {
   const contexto = await exigirAutor();
   if (!contexto.ok) return { ok: false, erro: contexto.erro };
