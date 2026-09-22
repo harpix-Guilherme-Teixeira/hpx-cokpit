@@ -4,7 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { twMerge } from "tailwind-merge";
-import { IconLayoutDashboard, IconTable, IconWorld, IconX } from "@tabler/icons-react";
+import {
+  IconLayoutDashboard,
+  IconPlugConnected,
+  IconTable,
+  IconWorld,
+  IconX,
+} from "@tabler/icons-react";
 
 type ItemProps = {
   href: string;
@@ -99,6 +105,15 @@ export function Sidebar({ aberto, fechar }: Props) {
           aoNavegar={fechar}
         >
           Dados
+        </ItemSidebar>
+
+        <ItemSidebar
+          href="/integrations"
+          ativo={ativo("/integrations")}
+          icone={<IconPlugConnected size={20} />}
+          aoNavegar={fechar}
+        >
+          Integrações
         </ItemSidebar>
 
         <div className="mt-auto">
