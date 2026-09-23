@@ -409,3 +409,76 @@ export async function panorama(
     },
   };
 }
+
+async function jiraGet(caminho: string): Promise<any> {
+  const res = await fetch(`${base()}${caminho}`, {
+    headers: { Authorization: autorizacao(), Accept: "application/json" },
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const texto = await res.text().catch(() => "");
+    throw new Error(
+      `Jira respondeu ${res.status} em ${caminho} (auth ${modo()}). ${texto.slice(0, 200)}`,
+    );
+  }
+  return res.json();
+}
+
+export type HorasDaJanela = { horas: number; itens: number; lancamentos: number };
+
+/** Horas lançadas DENTRO de uma janela de tempo.
+ *
+ *  O campo `timespent` da issue é acumulado desde sempre e não sabe responder
+ *  "quanto foi lançado nesta semana". Só o worklog guarda a data de cada
+ *  lançamento. Por isso a busca aqui serve apenas para descobrir QUAIS issues
+ *  tiveram apontamento na janela, e a soma vem dos lançamentos, um a um.
+ *
+ *  `startedAfter` corta no servidor. O limite de cima é conferido aqui, porque
+ *  o endpoint não aceita os dois. */
+export async function somarWorklogNaJanela(
+  jql: string,
+  inicio: Date,
+  fim: Date,
+): Promise<HorasDaJanela> {
+  let token: string | undefined;
+  const chaves: string[] = [];
+  do {
+    const r = await jira("/rest/api/3/search/jql", {
+      jql,
+      maxResults: 100,
+      fields: ["key"],
+      nextPageToken: token,
+    });
+    for (const item of r?.issues ?? []) if (item?.key) chaves.push(item.key);
+    token = r?.nextPageToken;
+  } while (token);
+
+  const desde = inicio.getTime();
+  const ate = fim.getTime();
+  let segundos = 0;
+  let lancamentos = 0;
+  const tocadas = new Set<string>();
+
+  // Em lotes: uma issue por vez levaria minutos numa semana cheia, e o tempo
+  // da função na Vercel é curto.
+  const LOTE = 10;
+  for (let i = 0; i < chaves.length; i += LOTE) {
+    const fatia = chaves.slice(i, i + LOTE);
+    const respostas = await Promise.all(
+      fatia.map((chave) =>
+        jiraGet(`/rest/api/3/issue/${chave}/worklog?startedAfter=${desde}&maxResults=1000`),
+      ),
+    );
+    respostas.forEach((r, j) => {
+      for (const w of r?.worklogs ?? []) {
+        const quando = Date.parse(w?.started ?? "");
+        if (!Number.isFinite(quando) || quando < desde || quando > ate) continue;
+        segundos += w?.timeSpentSeconds ?? 0;
+        lancamentos += 1;
+        tocadas.add(fatia[j]);
+      }
+    });
+  }
+
+  return { horas: segundos / 3600, itens: tocadas.size, lancamentos };
+}

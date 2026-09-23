@@ -10,10 +10,18 @@ export const maxDuration = 60;
 
 const CONJUNTO = 4;
 
-/** Só estas três colunas são do robô. As outras quatro são da gestora, moram na
- *  MESMA linha, e por isso a gravação é uma mesclagem e nunca uma troca da
- *  linha inteira. Regravar a linha apagaria o que ela digitou. */
-const DO_ROBO = ["historias-criadas-pelo-agente", "atividades-concluidas", "bloqueadas-agora"];
+/** As colunas do robô. As demais são da gestora, moram na MESMA linha, e por
+ *  isso a gravação é uma mesclagem e nunca uma troca da linha inteira:
+ *  regravar a linha apagaria o que ela digitou.
+ *
+ *  Chave daqui que não exista como coluna vira valor órfão no jsonb, guardado
+ *  mas invisível. É o que acontece quando alguém apaga a coluna na tela. */
+const DO_ROBO = [
+  "historias-criadas-pelo-agente",
+  "atividades-concluidas",
+  "bloqueadas-agora",
+  "horas-apontadas-na-semana",
+];
 
 const DIAS = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 
@@ -149,6 +157,9 @@ export async function GET(request: NextRequest) {
       "historias-criadas-pelo-agente": medida.historiasCriadasPeloAgente,
       "atividades-concluidas": medida.atividadesConcluidas,
       "bloqueadas-agora": medida.bloqueadasAgora,
+      // Uma casa decimal: worklog em minutos vira dizima e a tela mostraria
+      // 12,333333h.
+      "horas-apontadas-na-semana": Number(medida.horasApontadasNaSemana.toFixed(1)),
     };
 
     const { data: existente } = await supabase
@@ -177,7 +188,7 @@ export async function GET(request: NextRequest) {
 
     await registrarRodada(
       "ok",
-      `semana de ${medida.semana}, lido com a conta de ${medida.identidade}: agente ${medida.historiasCriadasPeloAgente}, concluídas ${medida.atividadesConcluidas}, bloqueadas ${medida.bloqueadasAgora}`,
+      `semana de ${medida.semana}, lido com a conta de ${medida.identidade}: agente ${medida.historiasCriadasPeloAgente}, concluídas ${medida.atividadesConcluidas}, bloqueadas ${medida.bloqueadasAgora}, ${medida.horasApontadasNaSemana.toFixed(1)}h apontadas`,
     );
 
     return NextResponse.json({

@@ -1,7 +1,7 @@
-import { contar, quemSou } from "@/lib/jira";
+import { contar, quemSou, somarWorklogNaJanela } from "@/lib/jira";
 
-/** Os três indicadores do review que saem do Jira. Os outros quatro são
- *  digitados pela gestora e o robô nunca encosta neles. */
+/** Os indicadores do review que saem do Jira. Os manuais são digitados pela
+ *  gestora e o robô nunca encosta neles. */
 export type IndicadoresDaSemana = {
   identidade: string;
   semana: string;
@@ -9,6 +9,7 @@ export type IndicadoresDaSemana = {
   historiasCriadasPeloAgente: number;
   atividadesConcluidas: number;
   bloqueadasAgora: number;
+  horasApontadasNaSemana: number;
 };
 
 /** Brasília é UTC-3 o ano inteiro desde 2019, quando o horário de verão acabou.
@@ -57,8 +58,9 @@ export async function medirSemana(agora = new Date()): Promise<IndicadoresDaSema
   const identidade = await quemSou();
 
   const desde = `"${inicio} 00:00"`;
+  const abertura = new Date(`${inicio}T00:00:00-03:00`);
 
-  const [historias, concluidas, bloqueadas] = await Promise.all([
+  const [historias, concluidas, bloqueadas, horas] = await Promise.all([
     contar(`project = PTF AND labels = "rascunho-agente" AND created >= ${desde}`),
 
     // subTaskIssueTypes() e não `issuetype != "Sub-tarefa"`: Sub-bug,
@@ -70,6 +72,16 @@ export async function medirSemana(agora = new Date()): Promise<IndicadoresDaSema
 
     // Foto do momento, não movimento da semana.
     contar(`project = PTF AND status = "Bloqueado" AND issuetype IN ("História", "Tarefa")`),
+
+    // Horas da SEMANA saem do worklog, nunca do campo de tempo gasto da issue:
+    // aquele é acumulado desde sempre e não sabe dizer quando o lançamento foi
+    // feito. A JQL aqui só descobre quais issues foram tocadas na janela; a
+    // soma vem dos lançamentos, um a um, filtrados pela data.
+    somarWorklogNaJanela(
+      `project = PTF AND worklogDate >= "${inicio}"`,
+      abertura,
+      agora,
+    ),
   ]);
 
   return {
@@ -79,5 +91,6 @@ export async function medirSemana(agora = new Date()): Promise<IndicadoresDaSema
     historiasCriadasPeloAgente: historias,
     atividadesConcluidas: concluidas,
     bloqueadasAgora: bloqueadas,
+    horasApontadasNaSemana: horas.horas,
   };
 }
